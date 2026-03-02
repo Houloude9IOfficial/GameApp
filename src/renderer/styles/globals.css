@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Theme CSS Variables (Dark Default) ── */
+:root {
+  --color-primary: #0f1117;
+  --color-secondary: #161922;
+  --color-accent: #e0e2e8;
+  --color-surface: #1a1d26;
+  --color-surface-hover: #222631;
+  --color-surface-active: #2a2f3d;
+  --color-sidebar: #0c0e14;
+  --color-sidebar-hover: #161922;
+  --color-sidebar-active: #1e2230;
+  --color-sidebar-text: #8b92a5;
+  --color-card: #171a23;
+  --color-card-hover: #1e2230;
+  --color-card-border: #2a2f3d;
+  --color-titlebar: #0a0c10;
+  --color-titlebar-text: #e2e4ea;
+  --color-statusbar: #0a0c10;
+  --color-text-primary: #e2e4ea;
+  --color-text-secondary: #a0a5b5;
+  --color-text-muted: #5c6174;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #b0b4c0;
+
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-size-base: 14px;
+  --border-radius: 8px;
+  --sidebar-width: 220px;
+  --sidebar-width-collapsed: 60px;
+  --titlebar-height: 40px;
+  --card-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* ── Base Styles ── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-active);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* ── Drag Region ── */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* ── Transitions ── */
+.transition-theme {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ── Custom Utility Classes ── */
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary;
+  }
+
+  .glass {
+    backdrop-filter: blur(12px);
+    background: rgba(15, 17, 23, 0.8);
+  }
+
+  .card-glow {
+    box-shadow: 0 0 20px rgba(224, 226, 232, 0.06);
+  }
+
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}

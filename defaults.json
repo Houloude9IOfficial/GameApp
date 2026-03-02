@@ -1,0 +1,22 @@
+{
+  "serverUrl": "http://localhost:3000",
+  "apiKey": "",
+  "locked": {
+    "serverUrl": false,
+    "apiKey": false
+  },
+  "defaults": {
+    "theme": "dark",
+    "installDirectory": "",
+    "maxConcurrentDownloads": 3,
+    "bandwidthLimit": 0,
+    "autoUpdate": true,
+    "updateCheckInterval": 1800000,
+    "verifyAfterDownload": true,
+    "preferDeltaUpdates": true,
+    "launchOnStartup": false,
+    "minimizeToTray": true,
+    "startMinimized": false,
+    "language": "en"
+  }
+}
