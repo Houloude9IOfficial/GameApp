@@ -1,10 +1,10 @@
 # GameServer specific
 downloads/
-games/
+/Games/
 certs/*.pem
 config.json
 /.stfolder
-
+/release
 
 # Logs
 logs

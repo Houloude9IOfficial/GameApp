@@ -7,6 +7,7 @@ import { DEFAULT_BANNER } from '../utils/constants';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
+import { BandwidthGraph } from '../components/common/BandwidthGraph';
 
 export function DownloadsPage() {
   const queue = useDownloadStore(s => s.queue);
@@ -14,6 +15,7 @@ export function DownloadsPage() {
   const resumeDownload = useDownloadStore(s => s.resumeDownload);
   const cancelDownload = useDownloadStore(s => s.cancelDownload);
   const getTotalSpeed = useDownloadStore(s => s.getTotalSpeed);
+  const speedHistory = useDownloadStore(s => s.speedHistory);
 
   const games = useGamesStore(s => s.games);
 
@@ -40,7 +42,7 @@ export function DownloadsPage() {
           </div>
           {activeDownloads.length > 0 && (
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={() => queue.forEach(d => { if (d.status === 'downloading') pauseDownload(d.gameId); })}>
+              <Button variant="secondary" size="sm" onClick={() => queue.forEach(d => { if (d.status === 'downloading') pauseDownload(d.id); })}>
                 <Pause size={12} className="mr-1" /> Pause All
               </Button>
             </div>
@@ -49,17 +51,22 @@ export function DownloadsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Bandwidth Graph */}
+        {activeDownloads.length > 0 && speedHistory.length > 1 && (
+          <BandwidthGraph speedHistory={speedHistory} />
+        )}
+
         {/* Active Downloads */}
         {activeDownloads.length > 0 && (
           <Section title="Active" count={activeDownloads.length}>
             {activeDownloads.map(dl => (
               <DownloadItem
-                key={dl.gameId}
+                key={dl.id}
                 download={dl}
                 game={getGame(dl.gameId)}
-                onPause={() => pauseDownload(dl.gameId)}
-                onResume={() => resumeDownload(dl.gameId)}
-                onCancel={() => cancelDownload(dl.gameId)}
+                onPause={() => pauseDownload(dl.id)}
+                onResume={() => resumeDownload(dl.id)}
+                onCancel={() => cancelDownload(dl.id)}
               />
             ))}
           </Section>
@@ -70,12 +77,12 @@ export function DownloadsPage() {
           <Section title="Paused" count={pausedDownloads.length}>
             {pausedDownloads.map(dl => (
               <DownloadItem
-                key={dl.gameId}
+                key={dl.id}
                 download={dl}
                 game={getGame(dl.gameId)}
-                onPause={() => pauseDownload(dl.gameId)}
-                onResume={() => resumeDownload(dl.gameId)}
-                onCancel={() => cancelDownload(dl.gameId)}
+                onPause={() => pauseDownload(dl.id)}
+                onResume={() => resumeDownload(dl.id)}
+                onCancel={() => cancelDownload(dl.id)}
               />
             ))}
           </Section>
@@ -86,12 +93,12 @@ export function DownloadsPage() {
           <Section title="Failed" count={failedDownloads.length}>
             {failedDownloads.map(dl => (
               <DownloadItem
-                key={dl.gameId}
+                key={dl.id}
                 download={dl}
                 game={getGame(dl.gameId)}
                 onPause={() => {}}
-                onResume={() => resumeDownload(dl.gameId)}
-                onCancel={() => cancelDownload(dl.gameId)}
+                onResume={() => resumeDownload(dl.id)}
+                onCancel={() => cancelDownload(dl.id)}
               />
             ))}
           </Section>
@@ -176,7 +183,7 @@ function DownloadItem({ download, game, onPause, onResume, onCancel }: {
           {isError && <Badge variant="danger" size="sm">Error</Badge>}
         </div>
 
-        {(isActive || isPaused) && (
+        {(isActive || isPaused || isQueued) && (
           <>
             <ProgressBar
               value={download.progress || 0}
@@ -184,10 +191,16 @@ function DownloadItem({ download, game, onPause, onResume, onCancel }: {
               color={isPaused ? 'warning' : 'accent'}
             />
             <div className="flex items-center gap-3 mt-1 text-xs text-text-muted">
-              <span>{formatPercent(download.progress || 0)}</span>
-              <span>{formatBytes(download.downloadedBytes || 0)} / {formatBytes(download.totalBytes || 0)}</span>
-              {isActive && <span>{formatSpeed(download.speed || 0)}</span>}
-              {isActive && download.eta > 0 && <span>ETA: {formatETA(download.eta)}</span>}
+              {isQueued ? (
+                <span>Starting download...</span>
+              ) : (
+                <>
+                  <span>{formatPercent(download.progress || 0)}</span>
+                  <span>{formatBytes(download.downloadedBytes || 0)} / {formatBytes(download.totalBytes || 0)}</span>
+                  {isActive && <span>{formatSpeed(download.speed || 0)}</span>}
+                  {isActive && download.eta > 0 && <span>ETA: {formatETA(download.eta)}</span>}
+                </>
+              )}
             </div>
           </>
         )}
@@ -209,9 +222,11 @@ function DownloadItem({ download, game, onPause, onResume, onCancel }: {
             <Play size={16} />
           </button>
         )}
-        <button onClick={onCancel} className="p-2 rounded-lg text-text-muted hover:text-danger hover:bg-surface transition-colors" title="Cancel">
-          <Trash2 size={16} />
-        </button>
+        {(isActive || isPaused || isQueued || isError) && (
+          <button onClick={onCancel} className="p-2 rounded-lg text-text-muted hover:text-danger hover:bg-surface transition-colors" title="Cancel">
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
     </div>
   );

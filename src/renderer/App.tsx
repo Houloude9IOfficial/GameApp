@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { TitleBar } from './components/layout/TitleBar';
@@ -9,10 +9,16 @@ import { StorePage } from './pages/StorePage';
 import { DownloadsPage } from './pages/DownloadsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { GameDetailPage } from './pages/GameDetailPage';
+import { LoginPage } from './pages/LoginPage';
+import { FriendsPage } from './pages/FriendsPage';
+import { ActivityPage } from './pages/ActivityPage';
 import { InstallModal } from './components/common/InstallModal';
+import { GamepadHandler } from './components/common/GamepadHandler';
 import { useThemeStore } from './stores/useThemeStore';
 import { useSettingsStore } from './stores/useSettingsStore';
 import { useDownloadStore } from './stores/useDownloadStore';
+import { useAuthStore } from './stores/useAuthStore';
+import { useOwnershipStore } from './stores/useOwnershipStore';
 
 function StartPageRedirect() {
   const navigate = useNavigate();
@@ -62,13 +68,45 @@ export function App() {
   const { applyTheme, loadThemes } = useThemeStore();
   const { loadSettings } = useSettingsStore();
   const { initDownloadListeners } = useDownloadStore();
+  const { isAuthenticated, checkStatus } = useAuthStore();
+  const { fetchOwned } = useOwnershipStore();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     loadSettings();
     loadThemes().then(() => applyTheme());
+    checkStatus().finally(() => setAuthChecked(true));
     const cleanup = initDownloadListeners();
     return cleanup;
   }, []);
+
+  // Fetch ownership when authenticated
+  useEffect(() => {
+    if (isAuthenticated) fetchOwned();
+  }, [isAuthenticated]);
+
+  if (!authChecked) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen bg-primary">
+        <div className="text-text-muted text-sm">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LoginPage />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            className: '!bg-surface !text-text-primary !border !border-card-border',
+            duration: 4000,
+          }}
+        />
+      </>
+    );
+  }
 
   return (
     <HashRouter>
@@ -83,7 +121,8 @@ export function App() {
               <Route path="/" element={<LibraryPage />} />
               <Route path="/store" element={<StorePage />} />
               <Route path="/downloads" element={<DownloadsPage />} />
-
+              <Route path="/friends" element={<FriendsPage />} />
+              <Route path="/activity" element={<ActivityPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/game/:id" element={<GameDetailPage />} />
             </Routes>
@@ -92,6 +131,7 @@ export function App() {
         <StatusBar />
       </div>
       <InstallModal />
+      <GamepadHandler />
       <Toaster
         position="bottom-right"
         toastOptions={{

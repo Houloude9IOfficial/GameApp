@@ -9,6 +9,18 @@ export function formatBytes(bytes: number, decimals = 2): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
 }
 
+/** 
+ * Format launch arguments into a user-friendly string
+ * If it's a string, remove - prefix and join with commas. If it's an array, join with commas.
+ */
+export function formatLaunchArgs(args: string | string[]): string {
+  if (typeof args === 'string') {
+    return args.split(' ').map(arg => arg.replace(/^-+/, '')).join(', ');
+  } else {
+    return args.join(', ');
+  }
+}
+
 /**
  * Format seconds into human-readable duration
  */
@@ -74,4 +86,67 @@ export function truncate(text: string, maxLength: number): string {
  */
 export function formatPercent(value: number, decimals = 0): string {
   return `${value.toFixed(decimals)}%`;
+}
+
+/**
+ * Format an ISO date string to a readable date (e.g. "Nov 5, 2019")
+ */
+export function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/**
+ * Format a game state enum to a user-friendly label
+ */
+export function formatGameState(state: string): string {
+  const labels: Record<string, string> = {
+    'released': 'Released',
+    'coming-soon': 'Coming Soon',
+    'early-access': 'Early Access',
+    'not-available': 'Not Available',
+  };
+  return labels[state] || state;
+}
+
+/**
+ * Check if a game is available for download/installation.
+ * Games that are "coming-soon" or "not-available" cannot be installed.
+ */
+export function isGameAvailable(gameState?: string): boolean {
+  if (!gameState) return true; // default = released
+  return gameState === 'released' || gameState === 'early-access';
+}
+
+/**
+ * Calculate countdown to a release date.
+ * Returns null if the date is in the past or invalid.
+ */
+export function getCountdown(releaseDate?: string): { days: number; hours: number; minutes: number; seconds: number; total: number } | null {
+  if (!releaseDate) return null;
+  const target = new Date(releaseDate).getTime();
+  if (isNaN(target)) return null;
+  const now = Date.now();
+  const total = target - now;
+  if (total <= 0) return null;
+  return {
+    days: Math.floor(total / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((total / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((total / (1000 * 60)) % 60),
+    seconds: Math.floor((total / 1000) % 60),
+    total,
+  };
+}
+
+/**
+ * Format a countdown into a human-readable string.
+ */
+export function formatCountdown(countdown: { days: number; hours: number; minutes: number; seconds: number }): string {
+  const parts: string[] = [];
+  if (countdown.days > 0) parts.push(`${countdown.days}d`);
+  if (countdown.hours > 0) parts.push(`${countdown.hours}h`);
+  if (countdown.minutes > 0) parts.push(`${countdown.minutes}m`);
+  if (parts.length === 0) parts.push(`${countdown.seconds}s`);
+  return parts.join(' ');
 }

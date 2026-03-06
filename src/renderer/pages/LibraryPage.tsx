@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LayoutGrid, List, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { useGamesStore } from '../stores/useGamesStore';
+import { useOwnershipStore } from '../stores/useOwnershipStore';
 import { GameGrid } from '../components/games/GameGrid';
 import { GameList } from '../components/games/GameList';
 import { Badge } from '../components/common/Badge';
@@ -39,7 +40,8 @@ export function LibraryPage() {
     fetchInstalledGames();
   }, []);
 
-  const filteredGames = getFilteredGames();
+  const ownedGameIds = useOwnershipStore(s => s.ownedGameIds);
+  const filteredGames = getFilteredGames().filter(g => ownedGameIds.has(g.id));
 
   return (
     <div className="flex flex-col h-full">

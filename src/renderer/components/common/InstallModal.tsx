@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Download, HardDrive, Monitor, X, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Download, HardDrive, Monitor, X, AlertTriangle, CheckCircle, CalendarClock, Ban } from 'lucide-react';
 import { useInstallModal } from '../../stores/useInstallModal';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useDownloadStore } from '../../stores/useDownloadStore';
-import { formatBytes } from '../../utils/formatters';
+import { useOwnershipStore } from '../../stores/useOwnershipStore';
+import { formatBytes, isGameAvailable, getCountdown, formatGameState } from '../../utils/formatters';
 import { DEFAULT_BANNER } from '../../utils/constants';
 
 export function InstallModal() {
@@ -17,6 +18,7 @@ export function InstallModal() {
 function InstallModalInner({ game, onClose }: { game: any; onClose: () => void }) {
   const settings = useSettingsStore((s) => s.settings);
   const startDownload = useDownloadStore((s) => s.startDownload);
+  const owned = useOwnershipStore((s) => s.ownsGame(game.id));
 
   const [diskSpace, setDiskSpace] = useState<{ free: number; total: number } | null>(null);
   const [createShortcut, setCreateShortcut] = useState(true);
@@ -24,6 +26,8 @@ function InstallModalInner({ game, onClose }: { game: any; onClose: () => void }
 
   const installDir = settings?.installDirectory || 'C:\\Program Files\\GL\\Games';
   const requiredSize = game.totalSize || 0;
+  const available = isGameAvailable(game.gameState);
+  const countdown = getCountdown(game.releaseDate);
 
   useEffect(() => {
     window.electronAPI.getDiskSpace(installDir).then(setDiskSpace);
@@ -34,6 +38,14 @@ function InstallModalInner({ game, onClose }: { game: any; onClose: () => void }
   const iconUrl = game.brandingUrls?.icon || game.brandingUrls?.logo;
 
   const handleInstall = async () => {
+    if (!available) return; // Block install for unreleased games
+    // Prevent starting a duplicate download
+    const { useDownloadStore } = await import('../../stores/useDownloadStore');
+    if (useDownloadStore.getState().isGameInQueue(game.id)) {
+      const { default: toast } = await import('react-hot-toast');
+      toast('Already installing', { icon: '⏳' });
+      return;
+    }
     setLoading(true);
     try {
       await startDownload(game.id, 'install');
@@ -198,11 +210,25 @@ function InstallModalInner({ game, onClose }: { game: any; onClose: () => void }
           </button>
           <button
             onClick={handleInstall}
-            disabled={!hasEnoughSpace || loading}
+            disabled={!owned || !hasEnoughSpace || loading || !available}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-primary bg-accent hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg"
           >
-            <Download size={16} />
-            {loading ? 'Starting...' : 'Install'}
+            {!owned ? (
+              <>
+                <Ban size={16} />
+                Not Owned
+              </>
+            ) : !available ? (
+              <>
+                {game.gameState === 'coming-soon' ? <CalendarClock size={16} /> : <Ban size={16} />}
+                {formatGameState(game.gameState!)}
+              </>
+            ) : (
+              <>
+                <Download size={16} />
+                {loading ? 'Starting...' : 'Install'}
+              </>
+            )}
           </button>
         </div>
       </div>

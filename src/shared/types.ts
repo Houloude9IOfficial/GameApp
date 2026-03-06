@@ -18,8 +18,18 @@ export interface GameBrandingUrls {
   logo?: string;
   banner?: string;
   icon?: string;
+  capsule?: string;
   video?: string;
   screenshots?: string[];
+}
+
+export type GameState = 'released' | 'coming-soon' | 'early-access' | 'not-available';
+
+export type PlatformName = 'steam' | 'epic' | 'gog' | 'ubisoft' | 'ea' | 'xbox' | 'playstation' | 'rockstar' | 'microsoft';
+
+export interface Trailer {
+  title?: string;
+  youtubeUrl: string;
 }
 
 export interface Game {
@@ -38,6 +48,11 @@ export interface Game {
   totalSize?: number;
   fileCount?: number;
   releaseDate?: string;
+  gameState?: GameState;
+  isDrmFree?: boolean;
+  platforms?: PlatformName[];
+  sourcePlatform?: PlatformName;
+  trailers?: Trailer[];
   launchArgs?: string;
   preLaunchCommand?: string;
   changelog?: string;
@@ -204,6 +219,9 @@ export interface AppSettings {
   defaultViewMode: 'grid' | 'list';
   defaultCardSize: number; // 1-5
 
+  // Discovery
+  scanPorts: number[];
+
   // General
   launchOnStartup: boolean;
   minimizeToTray: boolean;
@@ -219,6 +237,14 @@ export interface LockedSettings {
 }
 
 // ── Server Info ──
+
+export interface DiscoveredServer {
+  url: string;
+  name?: string;
+  version?: string;
+  gamesCount?: number;
+  latency: number;
+}
 
 export interface ServerHealth {
   status: string;
@@ -249,6 +275,11 @@ export interface AuthState {
   username?: string;
   token?: string;
   expiresAt?: string;
+}
+
+export interface OwnedGame {
+  game_id: string;
+  acquired_at: string;
 }
 
 // ── Collections ──
@@ -286,6 +317,77 @@ export interface AppNotification {
   timestamp: string;
   read: boolean;
   action?: { label: string; route?: string };
+}
+
+// ── Auto-Updater ──
+
+export interface UpdateInfo {
+  version: string;
+  releaseNotes?: string;
+  mandatory?: boolean;
+}
+
+export interface UpdateProgress {
+  percent: number;
+  bytesPerSecond: number;
+  transferred: number;
+  total: number;
+}
+
+// ── Reviews ──
+
+export interface Review {
+  id: string;
+  gameId: string;
+  userId: string;
+  username: string;
+  rating: number; // 1-5
+  title?: string;
+  body?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReviewSummary {
+  averageRating: number;
+  totalReviews: number;
+  distribution: Record<number, number>; // { 1: count, 2: count, ... 5: count }
+}
+
+// ── Social / Friends ──
+
+export type FriendshipStatus = 'pending' | 'accepted' | 'blocked';
+export type UserOnlineStatus = 'online' | 'away' | 'offline' | 'playing';
+
+export interface Friend {
+  friendshipId: string;
+  userId: string;
+  username: string;
+  status: FriendshipStatus;
+  onlineStatus: UserOnlineStatus;
+  currentGameId?: string;
+  currentGameName?: string;
+  lastSeen?: string;
+}
+
+export interface FriendRequest {
+  friendshipId: string;
+  fromUserId: string;
+  fromUsername: string;
+  createdAt: string;
+}
+
+// ── Server Notifications ──
+
+export interface ServerNotification {
+  id: string;
+  type: 'server_announcement' | 'game_update' | 'new_game';
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+  createdAt: string;
+  read: boolean;
+  dismissed: boolean;
 }
 
 // ── IPC Channels ──
@@ -345,14 +447,23 @@ export const IPC_CHANNELS = {
   THEME_IMPORT: 'theme:import',
 
   // Auth
-  AUTH_CONNECT: 'auth:connect',
-  AUTH_DISCONNECT: 'auth:disconnect',
+  AUTH_REGISTER: 'auth:register',
+  AUTH_LOGIN: 'auth:login',
+  AUTH_LOGOUT: 'auth:logout',
+  AUTH_DELETE_ACCOUNT: 'auth:deleteAccount',
   AUTH_STATUS: 'auth:status',
+
+  // Library / Ownership
+  LIBRARY_GET_OWNED: 'library:getOwned',
+  LIBRARY_ADD_GAME: 'library:addGame',
+  LIBRARY_REMOVE_GAME: 'library:removeGame',
+  LIBRARY_OWNS_GAME: 'library:ownsGame',
 
   // Server
   SERVER_HEALTH: 'server:health',
   SERVER_INFO: 'server:info',
   SERVER_TEST: 'server:test',
+  SERVER_SCAN_LAN: 'server:scanLAN',
 
   // App
   APP_MINIMIZE: 'app:minimize',
@@ -366,6 +477,35 @@ export const IPC_CHANNELS = {
   COLLECTIONS_CREATE: 'collections:create',
   COLLECTIONS_UPDATE: 'collections:update',
   COLLECTIONS_DELETE: 'collections:delete',
+
+  // Updater
+  UPDATER_CHECK: 'updater:check',
+  UPDATER_DOWNLOAD: 'updater:download',
+  UPDATER_INSTALL: 'updater:install',
+  UPDATER_STATUS: 'updater:status',
+
+  // Notifications
+  NOTIFICATIONS_GET: 'notifications:get',
+  NOTIFICATIONS_MARK_READ: 'notifications:markRead',
+  NOTIFICATIONS_MARK_ALL_READ: 'notifications:markAllRead',
+  NOTIFICATIONS_DISMISS: 'notifications:dismiss',
+
+  // Reviews
+  REVIEWS_GET: 'reviews:get',
+  REVIEWS_GET_SUMMARY: 'reviews:getSummary',
+  REVIEWS_CREATE: 'reviews:create',
+  REVIEWS_UPDATE: 'reviews:update',
+  REVIEWS_DELETE: 'reviews:delete',
+
+  // Social
+  SOCIAL_GET_FRIENDS: 'social:getFriends',
+  SOCIAL_SEND_REQUEST: 'social:sendRequest',
+  SOCIAL_ACCEPT_REQUEST: 'social:acceptRequest',
+  SOCIAL_REMOVE_FRIEND: 'social:removeFriend',
+  SOCIAL_BLOCK_USER: 'social:blockUser',
+  SOCIAL_GET_REQUESTS: 'social:getRequests',
+  SOCIAL_UPDATE_STATUS: 'social:updateStatus',
+  SOCIAL_SEARCH_USERS: 'social:searchUsers',
 } as const;
 
 // ── Electron API exposed to renderer ──
@@ -429,14 +569,23 @@ export interface ElectronAPI {
   importTheme: (filePath: string) => Promise<ThemeConfig>;
 
   // Auth
-  authConnect: (code: string) => Promise<AuthState>;
-  authDisconnect: () => Promise<void>;
+  authRegister: (username: string, password: string) => Promise<AuthState>;
+  authLogin: (username: string, password: string) => Promise<AuthState>;
+  authLogout: () => Promise<void>;
+  authDeleteAccount: () => Promise<void>;
   getAuthStatus: () => Promise<AuthState>;
+
+  // Library / Ownership
+  getOwnedGames: () => Promise<OwnedGame[]>;
+  addGameToLibrary: (gameId: string) => Promise<{ ok: boolean; alreadyOwned: boolean }>;
+  removeGameFromLibrary: (gameId: string) => Promise<void>;
+  ownsGame: (gameId: string) => Promise<boolean>;
 
   // Server
   getServerHealth: () => Promise<ServerHealth>;
   getServerInfo: () => Promise<ServerInfo>;
   testServerConnection: (url: string) => Promise<{ success: boolean; error?: string }>;
+  scanForServers: (ports?: number[]) => Promise<DiscoveredServer[]>;
 
   // App
   minimize: () => void;
@@ -450,6 +599,37 @@ export interface ElectronAPI {
   createCollection: (data: { name: string; description?: string }) => Promise<Collection>;
   updateCollection: (id: string, data: Partial<Collection>) => Promise<Collection>;
   deleteCollection: (id: string) => Promise<void>;
+
+  // Updater
+  checkForUpdates: () => Promise<UpdateInfo | null>;
+  downloadUpdate: () => Promise<void>;
+  installUpdate: () => void;
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void;
+  onUpdateProgress: (callback: (progress: UpdateProgress) => void) => () => void;
+  onUpdateDownloaded: (callback: () => void) => () => void;
+
+  // Notifications (server)
+  getNotifications: (opts?: { unread?: boolean; limit?: number }) => Promise<ServerNotification[]>;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  dismissNotification: (id: string) => Promise<void>;
+
+  // Reviews
+  getReviews: (gameId: string, opts?: { sort?: string; page?: number; limit?: number }) => Promise<{ reviews: Review[]; total: number }>;
+  getReviewSummary: (gameId: string) => Promise<ReviewSummary>;
+  createReview: (gameId: string, data: { rating: number; title?: string; body?: string }) => Promise<Review>;
+  updateReview: (gameId: string, reviewId: string, data: { rating?: number; title?: string; body?: string }) => Promise<Review>;
+  deleteReview: (gameId: string, reviewId: string) => Promise<void>;
+
+  // Social
+  getFriends: () => Promise<Friend[]>;
+  sendFriendRequest: (username: string) => Promise<void>;
+  acceptFriendRequest: (friendshipId: string) => Promise<void>;
+  removeFriend: (friendshipId: string) => Promise<void>;
+  blockUser: (friendshipId: string) => Promise<void>;
+  getFriendRequests: () => Promise<FriendRequest[]>;
+  updateUserStatus: (status: string, gameId?: string) => Promise<void>;
+  searchUsers: (query: string) => Promise<{ id: string; username: string }[]>;
 }
 
 declare global {

@@ -70,7 +70,7 @@ export function GeneralSettings() {
         </div>
       </SettingsCard>
 
-      {/* Language (future) */}
+      {/* Language (future) no need since no extra languages are supported anyway.
       <SettingsCard title="Language" description="Interface language">
         <div className="mt-3">
           <select
@@ -88,7 +88,7 @@ export function GeneralSettings() {
             <option value="zh">中文</option>
           </select>
         </div>
-      </SettingsCard>
+      </SettingsCard> */}
 
       {/* Reset */}
       <SettingsCard title="Reset Settings" description="Restore all settings to their default values">

@@ -37,6 +37,10 @@ interface GamesState {
   getFilteredGames: () => Game[];
 }
 
+function capitalize(tag: string) {
+  return tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();
+}
+
 export const useGamesStore = create<GamesState>((set, get) => ({
   games: [],
   installedGames: [],
@@ -58,7 +62,13 @@ export const useGamesStore = create<GamesState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const data = await window.electronAPI.getGames();
-      set({ games: data.games, loading: false });
+  
+      const formattedGames = data.games.map((game: Game) => ({
+        ...game,
+        tags: game.tags?.map(capitalize)
+      }));
+  
+      set({ games: formattedGames, loading: false });
     } catch (err: any) {
       set({ error: err.message, loading: false });
     }
@@ -76,7 +86,13 @@ export const useGamesStore = create<GamesState>((set, get) => ({
   fetchTags: async () => {
     try {
       const data = await window.electronAPI.getTags();
-      set({ tags: data.tags });
+  
+      const formattedTags = data.tags.map((tag: Tag) => ({
+        ...tag,
+        name: capitalize(tag.name)
+      }));
+  
+      set({ tags: formattedTags });
     } catch (err: any) {
       console.error('Failed to fetch tags:', err);
     }

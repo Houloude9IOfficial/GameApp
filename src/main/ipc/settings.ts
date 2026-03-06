@@ -90,6 +90,7 @@ export function registerSettingsHandlers(
       startMinimized: false,
       startPage: 'store',
       language: 'en',
+      scanPorts: [3000],
     };
     store.set('settings', defaults);
     return defaults;

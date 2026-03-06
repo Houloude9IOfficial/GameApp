@@ -17,12 +17,15 @@ interface DownloadState {
   initDownloadListeners: () => () => void;
   getActiveCount: () => number;
   getTotalSpeed: () => number;
+  isGameInQueue: (gameId: string) => boolean;
+  speedHistory: { timestamp: number; speed: number }[];
 }
 
 export const useDownloadStore = create<DownloadState>((set, get) => ({
   queue: [],
   progress: {},
   loading: false,
+  speedHistory: [],
 
   fetchQueue: async () => {
     set({ loading: true });
@@ -87,9 +90,17 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
           }
           return t;
         });
+
+        // Track speed history for bandwidth graph
+        const totalSpeed = Object.values({ ...state.progress, [progress.taskId]: progress })
+          .reduce((sum, p) => sum + (p.speed || 0), 0);
+        const now = Date.now();
+        const newHistory = [...state.speedHistory, { timestamp: now, speed: totalSpeed }].slice(-120);
+
         return {
           queue: updated,
           progress: { ...state.progress, [progress.taskId]: progress },
+          speedHistory: newHistory,
         };
       });
     });
@@ -128,5 +139,9 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
   getTotalSpeed: () => {
     const { progress } = get();
     return Object.values(progress).reduce((sum, p) => sum + (p.speed || 0), 0);
+  },
+
+  isGameInQueue: (gameId) => {
+    return get().queue.some(t => t.gameId === gameId && !['completed', 'failed', 'cancelled'].includes(t.status));
   },
 }));

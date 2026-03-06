@@ -15,6 +15,7 @@
     "bs": "npm run build && npm run start",
     "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "dist": "npm run build && electron-builder",
+    "build:installer": "node scripts/build-installer.js",
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "electron-store": "^8.2.0",
     "electron-updater": "^6.2.0",
     "framer-motion": "^11.0.0",
+    "fuse.js": "^7.1.0",
     "lucide-react": "^0.378.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -63,6 +65,7 @@
         "nsis",
         "portable"
       ],
+      "artifactName": "GameLauncher_Setup.${ext}",
       "icon": "src/renderer/assets/favicon.ico"
     },
     "nsis": {

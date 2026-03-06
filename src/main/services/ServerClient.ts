@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import log from 'electron-log';
 import {
   Game, ServerHealth, ServerInfo, FileEntry, DeltaResult,
-  Tag, Category, AuthState,
+  Tag, Category, AuthState, OwnedGame,
 } from '../../shared/types';
 
 export interface ServerClientConfig {
@@ -55,6 +55,7 @@ export class ServerClient {
       brandingUrls: {
         logo: resolve(game.brandingUrls.logo),
         banner: resolve(game.brandingUrls.banner),
+        capsule: resolve(game.brandingUrls.capsule),
         icon: resolve(game.brandingUrls.icon),
         video: resolve(game.brandingUrls.video),
         screenshots: game.brandingUrls.screenshots?.map(s => resolve(s)!),
@@ -185,31 +186,86 @@ export class ServerClient {
 
   // ── Auth ──
 
-  async authenticateWithCode(code: string): Promise<AuthState> {
+  async register(username: string, password: string): Promise<AuthState> {
     try {
-      const { data } = await this.client.post('/api/auth/token', { code });
+      const { data } = await this.client.post('/api/auth/register', { username, password });
       if (data.token) {
         this.updateConfig({ authToken: data.token });
       }
       return {
         isAuthenticated: true,
-        username: data.username,
+        username: data.user.username,
         token: data.token,
         expiresAt: data.expiresAt,
       };
     } catch (err: any) {
-      log.error('Auth failed:', err.message);
-      return { isAuthenticated: false };
+      const msg = err.response?.data?.error || err.message;
+      log.error('Registration failed:', msg);
+      throw new Error(msg);
     }
   }
 
-  async verifyAuth(): Promise<boolean> {
+  async login(username: string, password: string): Promise<AuthState> {
     try {
-      await this.client.get('/api/auth/verify');
-      return true;
-    } catch {
-      return false;
+      const { data } = await this.client.post('/api/auth/login', { username, password });
+      if (data.token) {
+        this.updateConfig({ authToken: data.token });
+      }
+      return {
+        isAuthenticated: true,
+        username: data.user.username,
+        token: data.token,
+        expiresAt: data.expiresAt,
+      };
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message;
+      log.error('Login failed:', msg);
+      throw new Error(msg);
     }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.client.post('/api/auth/logout');
+    } catch {
+      // silent
+    }
+    this.updateConfig({ authToken: undefined });
+  }
+
+  async deleteAccount(): Promise<void> {
+    await this.client.delete('/api/auth/account');
+    this.updateConfig({ authToken: undefined });
+  }
+
+  async verifyAuth(): Promise<{ valid: boolean; username?: string }> {
+    try {
+      const { data } = await this.client.get('/api/auth/verify');
+      return { valid: true, username: data.user?.username };
+    } catch {
+      return { valid: false };
+    }
+  }
+
+  // ── Library / Ownership ──
+
+  async getOwnedGames(): Promise<OwnedGame[]> {
+    const { data } = await this.client.get('/api/auth/library');
+    return data.ownedGames || [];
+  }
+
+  async addGameToLibrary(gameId: string): Promise<{ ok: boolean; alreadyOwned: boolean }> {
+    const { data } = await this.client.post(`/api/auth/library/${encodeURIComponent(gameId)}`, {});
+    return data;
+  }
+
+  async removeGameFromLibrary(gameId: string): Promise<void> {
+    await this.client.delete(`/api/auth/library/${encodeURIComponent(gameId)}`);
+  }
+
+  async ownsGame(gameId: string): Promise<boolean> {
+    const { data } = await this.client.get(`/api/auth/owns/${encodeURIComponent(gameId)}`);
+    return data.owns;
   }
 
   // ── Patch Notes ──
@@ -251,5 +307,94 @@ export class ServerClient {
     } catch {
       return null;
     }
+  }
+
+  // ── Notifications ──
+
+  async getNotifications(opts?: { unread?: boolean; limit?: number }): Promise<any[]> {
+    const params: Record<string, string> = {};
+    if (opts?.unread) params.unread = 'true';
+    if (opts?.limit) params.limit = String(opts.limit);
+    const { data } = await this.client.get('/api/notifications', { params });
+    return data.notifications || [];
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    await this.client.patch(`/api/notifications/${encodeURIComponent(id)}/read`);
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    await this.client.post('/api/notifications/read-all');
+  }
+
+  async dismissNotification(id: string): Promise<void> {
+    await this.client.delete(`/api/notifications/${encodeURIComponent(id)}`);
+  }
+
+  // ── Reviews ──
+
+  async getReviews(gameId: string, opts?: { sort?: string; page?: number; limit?: number }): Promise<{ reviews: any[]; total: number }> {
+    const params: Record<string, string> = {};
+    if (opts?.sort) params.sort = opts.sort;
+    if (opts?.page) params.page = String(opts.page);
+    if (opts?.limit) params.limit = String(opts.limit);
+    const { data } = await this.client.get(`/api/games/${encodeURIComponent(gameId)}/reviews`, { params });
+    return data;
+  }
+
+  async getReviewSummary(gameId: string): Promise<any> {
+    const { data } = await this.client.get(`/api/games/${encodeURIComponent(gameId)}/reviews/summary`);
+    return data;
+  }
+
+  async createReview(gameId: string, reviewData: { rating: number; title?: string; body?: string }): Promise<any> {
+    const { data } = await this.client.post(`/api/games/${encodeURIComponent(gameId)}/reviews`, reviewData);
+    return data;
+  }
+
+  async updateReview(gameId: string, reviewId: string, reviewData: { rating?: number; title?: string; body?: string }): Promise<any> {
+    const { data } = await this.client.put(`/api/games/${encodeURIComponent(gameId)}/reviews/${encodeURIComponent(reviewId)}`, reviewData);
+    return data;
+  }
+
+  async deleteReview(gameId: string, reviewId: string): Promise<void> {
+    await this.client.delete(`/api/games/${encodeURIComponent(gameId)}/reviews/${encodeURIComponent(reviewId)}`);
+  }
+
+  // ── Social ──
+
+  async getFriends(): Promise<any[]> {
+    const { data } = await this.client.get('/api/social/friends');
+    return data.friends || [];
+  }
+
+  async sendFriendRequest(username: string): Promise<void> {
+    await this.client.post('/api/social/friends/request', { username });
+  }
+
+  async acceptFriendRequest(friendshipId: string): Promise<void> {
+    await this.client.post(`/api/social/friends/${encodeURIComponent(friendshipId)}/accept`);
+  }
+
+  async removeFriend(friendshipId: string): Promise<void> {
+    await this.client.delete(`/api/social/friends/${encodeURIComponent(friendshipId)}`);
+  }
+
+  async blockUser(friendshipId: string): Promise<void> {
+    await this.client.post(`/api/social/friends/${encodeURIComponent(friendshipId)}/block`);
+  }
+
+  async getFriendRequests(): Promise<any[]> {
+    const { data } = await this.client.get('/api/social/friends/requests');
+    return data.requests || [];
+  }
+
+  async updateUserStatus(status: string, gameId?: string): Promise<void> {
+    await this.client.put('/api/social/status', { status, gameId });
+  }
+
+  async searchUsers(query: string): Promise<{ id: string; username: string }[]> {
+    const { data } = await this.client.get('/api/social/users/search', { params: { q: query } });
+    return data.users || [];
   }
 }

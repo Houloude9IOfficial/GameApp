@@ -1,9 +1,9 @@
 {
-  "serverUrl": "http://localhost:3000",
+  "serverUrl": "https://gameserver.crickdevs.com",
   "apiKey": "",
   "locked": {
     "serverUrl": false,
-    "apiKey": false
+    "apiKey": true
   },
   "defaults": {
     "theme": "dark",

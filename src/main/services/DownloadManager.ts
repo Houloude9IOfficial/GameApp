@@ -88,6 +88,12 @@ export class DownloadManager {
   async startDownload(gameId: string, gameName: string, type: 'install' | 'update' | 'repair'): Promise<DownloadTask> {
     log.info(`Starting ${type} for ${gameId}`);
 
+    // Prevent duplicate downloads for the same game
+    const existing = this.queue.find(t => t.gameId === gameId && !['completed', 'failed', 'cancelled'].includes(t.status));
+    if (existing) {
+      throw new Error('Game is already in the download queue');
+    }
+
     // Get file manifest from server
     let files: DownloadFileTask[];
 
@@ -321,6 +327,17 @@ export class DownloadManager {
       file.downloaded = startByte;
     }
 
+    // Pre-hash existing partial content before starting HTTP request (streaming to support >2 GiB)
+    const hasher = crypto.createHash('sha256');
+    if (startByte > 0) {
+      await new Promise<void>((res, rej) => {
+        const rs = fs.createReadStream(tempPath, { highWaterMark: 64 * 1024 });
+        rs.on('data', (chunk: any) => hasher.update(chunk));
+        rs.on('end', () => res());
+        rs.on('error', rej);
+      });
+    }
+
     return new Promise((resolve, reject) => {
       const url = new URL(file.url);
       const requester = url.protocol === 'https:' ? https : http;
@@ -347,14 +364,7 @@ export class DownloadManager {
           flags: startByte > 0 ? 'a' : 'w',
         });
 
-        const hasher = crypto.createHash('sha256');
         let downloaded = startByte;
-
-        // If resuming, we need to hash the existing content too
-        if (startByte > 0) {
-          const existingData = fs.readFileSync(tempPath);
-          hasher.update(existingData);
-        }
 
         // Optional bandwidth throttling
         let dataStream: NodeJS.ReadableStream = res;
@@ -461,22 +471,31 @@ export class DownloadManager {
     const results: { path: string; hash: string }[] = [];
     if (!fs.existsSync(dir)) return results;
 
-    const walk = (currentDir: string, baseDir: string): void => {
+    const hashFile = (filePath: string): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const h = crypto.createHash('sha256');
+        const rs = fs.createReadStream(filePath, { highWaterMark: 64 * 1024 });
+        rs.on('data', (chunk: any) => h.update(chunk));
+        rs.on('end', () => resolve(h.digest('hex')));
+        rs.on('error', reject);
+      });
+    };
+
+    const walk = async (currentDir: string, baseDir: string): Promise<void> => {
       const entries = fs.readdirSync(currentDir, { withFileTypes: true });
       for (const entry of entries) {
         const fullPath = path.join(currentDir, entry.name);
         if (entry.isDirectory()) {
-          walk(fullPath, baseDir);
+          await walk(fullPath, baseDir);
         } else {
           const relativePath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
-          const content = fs.readFileSync(fullPath);
-          const hash = crypto.createHash('sha256').update(content).digest('hex');
+          const hash = await hashFile(fullPath);
           results.push({ path: relativePath, hash });
         }
       }
     };
 
-    walk(dir, dir);
+    await walk(dir, dir);
     return results;
   }
 

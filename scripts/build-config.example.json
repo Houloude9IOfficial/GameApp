@@ -1,0 +1,28 @@
+{
+  "appName": "My Game Launcher",
+  "appId": "com.mycompany.gamelauncher",
+  "version": "1.0.0",
+  "author": "My Company",
+  "description": "Download, manage, and play games",
+
+  "icon": "src/renderer/assets/favicon.ico",
+
+  "serverUrl": "https://games.mycompany.com",
+  "apiKey": "",
+
+  "lockServerUrl": false,
+  "lockApiKey": true,
+
+  "installer": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "license": null,
+    "installerIcon": null,
+    "uninstallerIcon": null,
+    "installerHeaderIcon": null
+  },
+
+  "outputDir": "release"
+}

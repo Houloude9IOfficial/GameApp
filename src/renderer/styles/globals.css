@@ -84,6 +84,13 @@ html, body, #root {
   -webkit-app-region: no-drag;
 }
 
+img, svg, image, video {
+  user-select: none;
+  -moz-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+}
+
 /* ── Transitions ── */
 .transition-theme {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
@@ -124,4 +131,16 @@ html, body, #root {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
   }
+}
+
+.loginscreen {
+  background: linear-gradient(-45deg, var(--color-primary), var(--color-secondary), var(--color-primary), var(--color-secondary));
+background-size: 400% 400%;
+animation: gradient 10s ease infinite;
+
+@keyframes gradient {
+  0% {background-position:0% 50%;}
+  50% {background-position:100% 50%;}
+  100% {background-position:0% 50%;}
+}
 }

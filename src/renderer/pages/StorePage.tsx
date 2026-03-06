@@ -1,11 +1,13 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutGrid, List, Search, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight, Download, Play, Info } from 'lucide-react';
+import { LayoutGrid, List, Search, SlidersHorizontal, ChevronDown, ChevronLeft, ChevronRight, Download, Play, Info, CalendarClock, Ban, Clock, ShieldCheck } from 'lucide-react';
 import { useGamesStore } from '../stores/useGamesStore';
 import { GameGrid } from '../components/games/GameGrid';
 import { GameList } from '../components/games/GameList';
+import { GameCard } from '../components/games/GameCard';
 import { DEFAULT_BANNER, SORT_OPTIONS } from '../utils/constants';
 import { Game } from '../../shared/types';
+import { isGameAvailable, getCountdown, formatGameState } from '../utils/formatters';
 
 function HeroCarousel({ games }: { games: Game[] }) {
   const navigate = useNavigate();
@@ -13,7 +15,7 @@ function HeroCarousel({ games }: { games: Game[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
-  const featured = games.slice(0, 5);
+  const featured = games;
 
   const goTo = useCallback((index: number) => {
     if (isTransitioning) return;
@@ -35,9 +37,20 @@ function HeroCarousel({ games }: { games: Game[] }) {
     timerRef.current = setInterval(next, 6000);
   };
 
-  if (featured.length === 0) return null;
+  const game = featured.length > 0 ? featured[activeIndex] : null;
+  const available = isGameAvailable(game?.gameState);
+  const [countdown, setCountdown] = useState(getCountdown(game?.releaseDate));
 
-  const game = featured[activeIndex];
+  // Live countdown ticker
+  useEffect(() => {
+    if (!game || available || !game.releaseDate) return;
+    setCountdown(getCountdown(game.releaseDate));
+    const timer = setInterval(() => setCountdown(getCountdown(game.releaseDate)), 1000);
+    return () => clearInterval(timer);
+  }, [game?.releaseDate, available, game?.id]);
+
+  if (!game) return null;
+
   const bannerUrl = game.brandingUrls?.banner || game.brandingUrls?.screenshots?.[0] || game.brandingUrls?.logo || DEFAULT_BANNER;
   const isInstalled = installedGames.some(g => g.gameId === game.id);
 
@@ -86,30 +99,85 @@ function HeroCarousel({ games }: { games: Game[] }) {
 
         {/* CTA Buttons */}
         <div className="flex items-center gap-3">
-          {isInstalled ? (
-            <button
-              onClick={() => navigate(`/game/${game.id}`)}
-              className="flex items-center gap-2 px-6 py-2.5 bg-accent hover:brightness-110 text-primary font-semibold rounded-lg transition-all shadow-lg"
-            >
-              <Play size={18} fill="currentColor" />
-              Play Now
-            </button>
+          {!available ? (
+            /* Coming Soon / Not Available state */
+            <>
+              {countdown ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-5 py-2.5 bg-white/10 text-white font-semibold rounded-lg backdrop-blur-sm border border-white/10">
+                    <CalendarClock size={18} />
+                    <span>{formatGameState(game.gameState!)}</span>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {countdown.days > 0 && (
+                      <div className="flex flex-col items-center bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 min-w-[48px] border border-white/10">
+                        <span className="text-white font-bold text-lg leading-none">{countdown.days}</span>
+                        <span className="text-white/50 text-[9px] mt-0.5">DAY{countdown.days !== 1 ? 'S' : ''}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-col items-center bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 min-w-[48px] border border-white/10">
+                      <span className="text-white font-bold text-lg leading-none">{String(countdown.hours).padStart(2, '0')}</span>
+                      <span className="text-white/50 text-[9px] mt-0.5">HRS</span>
+                    </div>
+                    <div className="flex flex-col items-center bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 min-w-[48px] border border-white/10">
+                      <span className="text-white font-bold text-lg leading-none">{String(countdown.minutes).padStart(2, '0')}</span>
+                      <span className="text-white/50 text-[9px] mt-0.5">MIN</span>
+                    </div>
+                    <div className="flex flex-col items-center bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 min-w-[48px] border border-white/10">
+                      <span className="text-white font-bold text-lg leading-none">{String(countdown.seconds).padStart(2, '0')}</span>
+                      <span className="text-white/50 text-[9px] mt-0.5">SEC</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-6 py-2.5 bg-white/10 text-white/70 font-semibold rounded-lg backdrop-blur-sm border border-white/10 cursor-default">
+                  <Ban size={18} />
+                  {formatGameState(game.gameState!)}
+                </div>
+              )}
+              <button
+                onClick={() => navigate(`/game/${game.id}`)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/10"
+              >
+                <Info size={16} />
+                Details
+              </button>
+            </>
+          ) : isInstalled ? (
+            <>
+              <button
+                onClick={() => navigate(`/game/${game.id}`)}
+                className="flex items-center gap-2 px-6 py-2.5 bg-accent hover:brightness-110 text-primary font-semibold rounded-lg transition-all shadow-lg"
+              >
+                <Play size={18} fill="currentColor" />
+                Play Now
+              </button>
+              <button
+                onClick={() => navigate(`/game/${game.id}`)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/10"
+              >
+                <Info size={16} />
+                Details
+              </button>
+            </>
           ) : (
-            <button
-              onClick={() => navigate(`/game/${game.id}`)}
-              className="flex items-center gap-2 px-6 py-2.5 bg-accent hover:brightness-110 text-primary font-semibold rounded-lg transition-all shadow-lg"
-            >
-              <Download size={18} />
-              Get Game
-            </button>
+            <>
+              <button
+                onClick={() => navigate(`/game/${game.id}`)}
+                className="flex items-center gap-2 px-6 py-2.5 bg-accent hover:brightness-110 text-primary font-semibold rounded-lg transition-all shadow-lg"
+              >
+                <Download size={18} />
+                Get Game
+              </button>
+              <button
+                onClick={() => navigate(`/game/${game.id}`)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/10"
+              >
+                <Info size={16} />
+                Details
+              </button>
+            </>
           )}
-          <button
-            onClick={() => navigate(`/game/${game.id}`)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/10"
-          >
-            <Info size={16} />
-            Details
-          </button>
         </div>
       </div>
 
@@ -149,6 +217,85 @@ function HeroCarousel({ games }: { games: Game[] }) {
   );
 }
 
+/* ─── Horizontal Scroll Row ─── */
+
+function GameRow({ title, icon, games: rowGames }: { title: string; icon?: React.ReactNode; games: Game[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const el = scrollRef.current;
+    if (el) {
+      const obs = new ResizeObserver(updateScrollState);
+      obs.observe(el);
+      return () => obs.disconnect();
+    }
+  }, [rowGames.length, updateScrollState]);
+
+  const scroll = (dir: 'left' | 'right') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = el.clientWidth * 0.75;
+    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
+  };
+
+  if (rowGames.length === 0) return null;
+
+  return (
+    <div className="relative group/row">
+      <div className="flex items-center gap-2 mb-3">
+        {icon}
+        <h2 className="text-base font-semibold text-text-primary">{title.charAt(0).toUpperCase() + title.slice(1)}</h2>
+        <span className="text-xs text-text-muted">{rowGames.length}</span>
+      </div>
+
+      <div className="relative">
+        {/* Left Arrow */}
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll('left')}
+            className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-surface/90 hover:bg-card border border-card-border text-text-primary rounded-full shadow-lg opacity-0 group-hover/row:opacity-100 transition-all"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
+
+        <div
+          ref={scrollRef}
+          onScroll={updateScrollState}
+          className="flex gap-4 overflow-x-auto scrollbar-hide pb-2"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {rowGames.map(game => (
+            <div key={game.id} className="flex-shrink-0">
+              <GameCard game={game} size={3} />
+            </div>
+          ))}
+        </div>
+
+        {/* Right Arrow */}
+        {canScrollRight && (
+          <button
+            onClick={() => scroll('right')}
+            className="absolute -right-2 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-surface/90 hover:bg-card border border-card-border text-text-primary rounded-full shadow-lg opacity-0 group-hover/row:opacity-100 transition-all"
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function StorePage() {
   const {
     games,
@@ -158,6 +305,7 @@ export function StorePage() {
     selectedCategory,
     tags,
     categories,
+    playStats,
     setSortBy,
     setViewMode,
     setSelectedTags,
@@ -178,10 +326,71 @@ export function StorePage() {
     useGamesStore.getState().fetchInstalledGames();
   }, []);
 
-  // Simple local filter for store — shows all games
+  // Fetch play stats for all games
+  useEffect(() => {
+    games.forEach(g => {
+      if (!playStats[g.id]) {
+        useGamesStore.getState().fetchPlayStats(g.id);
+      }
+    });
+  }, [games]);
+
+  // ── Featured carousel: coming-soon first (nearest release), then latest released ──
+  const featuredGames = useMemo(() => {
+    const comingSoon = games
+      .filter(g => g.gameState === 'coming-soon')
+      .sort((a, b) => {
+        const da = a.releaseDate ? new Date(a.releaseDate).getTime() : Infinity;
+        const db = b.releaseDate ? new Date(b.releaseDate).getTime() : Infinity;
+        return da - db;
+      });
+
+    const comingSoonIds = new Set(comingSoon.map(g => g.id));
+
+    const rest = games
+      .filter(g => !comingSoonIds.has(g.id))
+      .sort((a, b) => {
+        const da = a.releaseDate ? new Date(a.releaseDate).getTime() : 0;
+        const db = b.releaseDate ? new Date(b.releaseDate).getTime() : 0;
+        return db - da;
+      });
+
+    return [...comingSoon, ...rest].slice(0, 5);
+  }, [games]);
+
+  // ── Section data ──
+  const recentlyPlayed = useMemo(() => {
+    return Object.entries(playStats)
+      .filter(([, s]) => s && s.totalPlayTimeSeconds > 0)
+      .sort((a, b) => {
+        const da = a[1].lastPlayedAt ? new Date(a[1].lastPlayedAt).getTime() : 0;
+        const db = b[1].lastPlayedAt ? new Date(b[1].lastPlayedAt).getTime() : 0;
+        return db - da;
+      })
+      .map(([id]) => games.find(g => g.id === id))
+      .filter((g): g is Game => !!g);
+  }, [playStats, games]);
+
+  const drmFreeGames = useMemo(() => {
+    return games.filter(g => g.isDrmFree === true);
+  }, [games]);
+
+  const categoryRows = useMemo(() => {
+    const map = new Map<string, Game[]>();
+    for (const g of games) {
+      if (!g.category) continue;
+      const list = map.get(g.category) || [];
+      list.push(g);
+      map.set(g.category, list);
+    }
+    return Array.from(map.entries())
+      .filter(([, list]) => list.length >= 2)
+      .sort((a, b) => b[1].length - a[1].length);
+  }, [games]);
+
+  // ── All Games filtering & sorting ──
   let displayGames = [...games];
 
-  // Search filter
   if (searchTerm.trim()) {
     const lower = searchTerm.toLowerCase();
     displayGames = displayGames.filter(g =>
@@ -191,7 +400,6 @@ export function StorePage() {
     );
   }
 
-  // Tag/category filters
   if (selectedTags.length > 0) {
     displayGames = displayGames.filter(g => selectedTags.some(t => g.tags?.includes(t)));
   }
@@ -199,7 +407,6 @@ export function StorePage() {
     displayGames = displayGames.filter(g => g.category === selectedCategory);
   }
 
-  // Sort
   displayGames.sort((a, b) => {
     switch (sortBy) {
       case 'name': return a.name.localeCompare(b.name);
@@ -213,11 +420,41 @@ export function StorePage() {
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Hero Carousel */}
       <div className="px-6 pt-5">
-        <HeroCarousel games={games} />
+        <HeroCarousel games={featuredGames} />
       </div>
 
-      {/* Toolbar */}
-      <div className="px-6 pt-5 pb-3">
+      {/* ── Store Sections ── */}
+      <div className="px-6 pt-6 space-y-6">
+        {/* Recently Played */}
+        {recentlyPlayed.length > 0 && (
+          <GameRow
+            title="Recently Played"
+            icon={<Clock size={18} className="text-text-muted" />}
+            games={recentlyPlayed}
+          />
+        )}
+
+        {/* DRM-Free Picks */}
+        {drmFreeGames.length > 0 && (
+          <GameRow
+            title="DRM-Free Games"
+            icon={<ShieldCheck size={18} className="text-success" />}
+            games={drmFreeGames}
+          />
+        )}
+
+        {/* By Category */}
+        {categoryRows.map(([category, catGames]) => (
+          <GameRow
+            key={category}
+            title={category}
+            games={catGames}
+          />
+        ))}
+      </div>
+
+      {/* ── All Games Toolbar ── */}
+      <div className="px-6 pt-6 pb-3">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-text-primary">All Games</h2>
           <span className="text-xs text-text-muted">{displayGames.length} games</span>

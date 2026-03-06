@@ -3,10 +3,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 import Store from 'electron-store';
 import { GameLauncher } from '../services/GameLauncher';
+import { ServerClient } from '../services/ServerClient';
 import { IPC_CHANNELS, InstalledGame, Game } from '../../shared/types';
 import log from 'electron-log';
 
-export function registerLaunchHandlers(ipcMain: IpcMain, gameLauncher: GameLauncher, store: Store<any>): void {
+export function registerLaunchHandlers(ipcMain: IpcMain, gameLauncher: GameLauncher, store: Store<any>, serverClient: ServerClient): void {
   ipcMain.handle(IPC_CHANNELS.LAUNCH_GAME, async (_e, gameId: string) => {
     const installed = store.get(`installedGames.${gameId}`) as InstalledGame | undefined;
     if (!installed) throw new Error('Game not installed');
@@ -33,11 +34,24 @@ export function registerLaunchHandlers(ipcMain: IpcMain, gameLauncher: GameLaunc
 
       if (!executablePath) throw new Error('No executable found for this game. Check the game configuration.');
 
+      // Resolve launch arguments: prefer installed record, then fetch from server
+      let launchArgs = installed.launchArgs;
+      if (!launchArgs) {
+        try {
+          const gameData = await serverClient.getGame(gameId);
+          if (gameData.launchArgs) {
+            launchArgs = gameData.launchArgs;
+          }
+        } catch {
+          // non-fatal, just launch without extra args
+        }
+      }
+
       await gameLauncher.launch(
         gameId,
         executablePath,
         installed.installPath,
-        installed.launchArgs,
+        launchArgs,
         installed.preLaunchCommand,
       );
     } catch (err: any) {

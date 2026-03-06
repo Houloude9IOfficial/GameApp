@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { SearchBar } from '../search/SearchBar';
+import { NotificationDropdown } from '../common/NotificationDropdown';
 import logoImg from '../../assets/logo-rounded.png';
 
 export function TitleBar() {
@@ -41,8 +42,9 @@ export function TitleBar() {
         <SearchBar />
       </div>
 
-      {/* Window Controls */}
+      {/* Notifications + Window Controls */}
       <div className="flex items-center gap-0.5 no-drag ml-4">
+        <NotificationDropdown />
         <button
           onClick={handleMinimize}
           className="w-10 h-8 flex items-center justify-center rounded hover:bg-surface-hover transition-colors"

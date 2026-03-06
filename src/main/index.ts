@@ -11,6 +11,11 @@ import { registerAuthHandlers } from './ipc/auth';
 import { registerFilesystemHandlers } from './ipc/filesystem';
 import { registerLaunchHandlers } from './ipc/launch';
 import { registerCollectionsHandlers } from './ipc/collections';
+import { registerDiscoveryHandlers } from './ipc/discovery';
+import { registerUpdaterHandlers } from './ipc/updater';
+import { registerNotificationHandlers } from './ipc/notifications';
+import { registerReviewHandlers } from './ipc/reviews';
+import { registerSocialHandlers } from './ipc/social';
 import { ServerClient } from './services/ServerClient';
 import { DownloadManager } from './services/DownloadManager';
 import { GameLauncher } from './services/GameLauncher';
@@ -39,7 +44,7 @@ const store = new Store<{
     settings: {
       serverUrl: 'http://localhost:3000',
       apiKey: '',
-      installDirectory: 'C:\\Program Files\\GL\\Games',
+      installDirectory: path.join(app.getPath('userData'), 'Games'),
       maxConcurrentDownloads: 3,
       bandwidthLimit: 0,
       autoUpdate: true,
@@ -56,6 +61,7 @@ const store = new Store<{
       startMinimized: false,
       language: 'en',
       startPage: 'store',
+      scanPorts: [3000],
     },
     installedGames: {},
     collections: [],
@@ -228,8 +234,13 @@ function registerAllHandlers(): void {
   registerSettingsHandlers(ipcMain, store, lockedSettings, serverClient, downloadManager);
   registerAuthHandlers(ipcMain, serverClient, store);
   registerFilesystemHandlers(ipcMain);
-  registerLaunchHandlers(ipcMain, gameLauncher, store);
+  registerLaunchHandlers(ipcMain, gameLauncher, store, serverClient);
   registerCollectionsHandlers(ipcMain, store);
+  registerDiscoveryHandlers(ipcMain);
+  registerUpdaterHandlers(ipcMain, mainWindow, store);
+  registerNotificationHandlers(ipcMain, serverClient);
+  registerReviewHandlers(ipcMain, serverClient);
+  registerSocialHandlers(ipcMain, serverClient);
 }
 
 // ── Register gameapp:// protocol ──

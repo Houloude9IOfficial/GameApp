@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGamesStore } from '../../stores/useGamesStore';
 import { Game } from '../../../shared/types';
 import { DEFAULT_BANNER } from '../../utils/constants';
+import Fuse from 'fuse.js';
 
 export function SearchBar() {
   const navigate = useNavigate();
@@ -15,6 +16,20 @@ export function SearchBar() {
   const containerRef = useRef<HTMLDivElement>(null);
   const games = useGamesStore(s => s.games);
 
+const fuse = useMemo(() => new Fuse(games, {
+  keys: [
+    { name: 'name', weight: 2.5 },
+    { name: 'developer', weight: 1.2 },
+    { name: 'description', weight: 1 },
+    { name: 'tags', weight: 1.5 },
+    { name: 'category', weight: 1.5 },
+    { name: 'id', weight: 0.3 },
+    { name: 'platforms', weight: 0.3 },
+  ],
+  threshold: 0.45,
+  includeScore: true,
+}), [games]);
+
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -22,17 +37,11 @@ export function SearchBar() {
       return;
     }
 
-    const q = query.toLowerCase();
-    const filtered = games.filter(g =>
-      g.name.toLowerCase().includes(q) ||
-      g.developer?.toLowerCase().includes(q) ||
-      g.tags?.some(t => t.toLowerCase().includes(q))
-    ).slice(0, 8);
-
-    setResults(filtered);
-    setOpen(filtered.length > 0);
+    const fuseResults = fuse.search(query).slice(0, 8).map(r => r.item);
+    setResults(fuseResults);
+    setOpen(fuseResults.length > 0);
     setSelectedIndex(-1);
-  }, [query, games]);
+  }, [query, fuse]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

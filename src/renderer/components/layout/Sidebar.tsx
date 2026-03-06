@@ -4,7 +4,7 @@ import {
   Gamepad2, Camera, Newspaper,
   Store, Globe, Bookmark, Download,
   ChevronLeft, ChevronRight, Settings,
-  HardDrive,
+  HardDrive, Users, Activity,
 } from 'lucide-react';
 import { useDownloadStore } from '../../stores/useDownloadStore';
 import { formatBytes } from '../../utils/formatters';
@@ -40,6 +40,9 @@ export function Sidebar() {
     { id: 'library', label: 'My Games', icon: <Gamepad2 size={20} />, path: '/', section: 'LIBRARY' },
     // Downloads
     { id: 'downloads', label: 'Downloads', icon: <Download size={20} />, path: '/downloads', badge: activeCount > 0 ? activeCount : undefined },
+    // Social
+    { id: 'friends', label: 'Friends', icon: <Users size={20} />, path: '/friends', section: 'SOCIAL' },
+    { id: 'activity', label: 'Activity', icon: <Activity size={20} />, path: '/activity' },
     // Settings
     { id: 'settings', label: 'Settings', icon: <Settings size={20} />, path: '/settings' },
   ];

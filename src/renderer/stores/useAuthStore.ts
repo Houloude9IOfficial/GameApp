@@ -4,8 +4,10 @@ import toast from 'react-hot-toast';
 
 interface AuthStoreState extends AuthState {
   loading: boolean;
-  connect: (code: string) => Promise<void>;
-  disconnect: () => Promise<void>;
+  register: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   checkStatus: () => Promise<void>;
 }
 
@@ -13,26 +15,56 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
   isAuthenticated: false,
   loading: false,
 
-  connect: async (code: string) => {
+  register: async (username: string, password: string) => {
     set({ loading: true });
     try {
-      const result = await window.electronAPI.authConnect(code);
+      const result = await window.electronAPI.authRegister(username, password);
       set({ ...result, loading: false });
       if (result.isAuthenticated) {
-        toast.success(`Connected as ${result.username || 'user'}`);
-      } else {
-        toast.error('Invalid authentication code');
+        toast.success(`Account created! Welcome, ${result.username}`);
+        return true;
       }
+      toast.error('Registration failed');
+      return false;
     } catch (err: any) {
       set({ isAuthenticated: false, loading: false });
-      toast.error(`Auth failed: ${err.message}`);
+      toast.error(err.message || 'Registration failed');
+      return false;
     }
   },
 
-  disconnect: async () => {
-    await window.electronAPI.authDisconnect();
+  login: async (username: string, password: string) => {
+    set({ loading: true });
+    try {
+      const result = await window.electronAPI.authLogin(username, password);
+      set({ ...result, loading: false });
+      if (result.isAuthenticated) {
+        toast.success(`Welcome back, ${result.username}`);
+        return true;
+      }
+      toast.error('Invalid username or password');
+      return false;
+    } catch (err: any) {
+      set({ isAuthenticated: false, loading: false });
+      toast.error(err.message || 'Login failed');
+      return false;
+    }
+  },
+
+  logout: async () => {
+    await window.electronAPI.authLogout();
     set({ isAuthenticated: false, username: undefined, token: undefined, expiresAt: undefined });
-    toast.success('Disconnected from server');
+    toast.success('Logged out');
+  },
+
+  deleteAccount: async () => {
+    try {
+      await window.electronAPI.authDeleteAccount();
+      set({ isAuthenticated: false, username: undefined, token: undefined, expiresAt: undefined });
+      toast.success('Account deleted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete account');
+    }
   },
 
   checkStatus: async () => {

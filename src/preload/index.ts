@@ -79,14 +79,23 @@ const electronAPI: ElectronAPI = {
   importTheme: (filePath) => ipcRenderer.invoke(IPC_CHANNELS.THEME_IMPORT, filePath),
 
   // Auth
-  authConnect: (code) => ipcRenderer.invoke(IPC_CHANNELS.AUTH_CONNECT, code),
-  authDisconnect: () => ipcRenderer.invoke(IPC_CHANNELS.AUTH_DISCONNECT),
+  authRegister: (username, password) => ipcRenderer.invoke(IPC_CHANNELS.AUTH_REGISTER, username, password),
+  authLogin: (username, password) => ipcRenderer.invoke(IPC_CHANNELS.AUTH_LOGIN, username, password),
+  authLogout: () => ipcRenderer.invoke(IPC_CHANNELS.AUTH_LOGOUT),
+  authDeleteAccount: () => ipcRenderer.invoke(IPC_CHANNELS.AUTH_DELETE_ACCOUNT),
   getAuthStatus: () => ipcRenderer.invoke(IPC_CHANNELS.AUTH_STATUS),
+
+  // Library / Ownership
+  getOwnedGames: () => ipcRenderer.invoke(IPC_CHANNELS.LIBRARY_GET_OWNED),
+  addGameToLibrary: (gameId) => ipcRenderer.invoke(IPC_CHANNELS.LIBRARY_ADD_GAME, gameId),
+  removeGameFromLibrary: (gameId) => ipcRenderer.invoke(IPC_CHANNELS.LIBRARY_REMOVE_GAME, gameId),
+  ownsGame: (gameId) => ipcRenderer.invoke(IPC_CHANNELS.LIBRARY_OWNS_GAME, gameId),
 
   // Server
   getServerHealth: () => ipcRenderer.invoke(IPC_CHANNELS.SERVER_HEALTH),
   getServerInfo: () => ipcRenderer.invoke(IPC_CHANNELS.SERVER_INFO),
   testServerConnection: (url) => ipcRenderer.invoke(IPC_CHANNELS.SERVER_TEST, url),
+  scanForServers: (ports) => ipcRenderer.invoke(IPC_CHANNELS.SERVER_SCAN_LAN, ports),
 
   // App
   minimize: () => ipcRenderer.invoke(IPC_CHANNELS.APP_MINIMIZE),
@@ -100,6 +109,49 @@ const electronAPI: ElectronAPI = {
   createCollection: (data) => ipcRenderer.invoke(IPC_CHANNELS.COLLECTIONS_CREATE, data),
   updateCollection: (id, data) => ipcRenderer.invoke(IPC_CHANNELS.COLLECTIONS_UPDATE, id, data),
   deleteCollection: (id) => ipcRenderer.invoke(IPC_CHANNELS.COLLECTIONS_DELETE, id),
+
+  // Updater
+  checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.UPDATER_CHECK),
+  downloadUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.UPDATER_DOWNLOAD),
+  installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.UPDATER_INSTALL),
+  onUpdateAvailable: (callback) => {
+    const handler = (_e: any, data: any) => callback(data);
+    ipcRenderer.on('updater:available', handler);
+    return () => ipcRenderer.removeListener('updater:available', handler);
+  },
+  onUpdateProgress: (callback) => {
+    const handler = (_e: any, data: any) => callback(data);
+    ipcRenderer.on('updater:progress', handler);
+    return () => ipcRenderer.removeListener('updater:progress', handler);
+  },
+  onUpdateDownloaded: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on('updater:downloaded', handler);
+    return () => ipcRenderer.removeListener('updater:downloaded', handler);
+  },
+
+  // Notifications (server)
+  getNotifications: (opts) => ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATIONS_GET, opts),
+  markNotificationRead: (id) => ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATIONS_MARK_READ, id),
+  markAllNotificationsRead: () => ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATIONS_MARK_ALL_READ),
+  dismissNotification: (id) => ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATIONS_DISMISS, id),
+
+  // Reviews
+  getReviews: (gameId, opts) => ipcRenderer.invoke(IPC_CHANNELS.REVIEWS_GET, gameId, opts),
+  getReviewSummary: (gameId) => ipcRenderer.invoke(IPC_CHANNELS.REVIEWS_GET_SUMMARY, gameId),
+  createReview: (gameId, data) => ipcRenderer.invoke(IPC_CHANNELS.REVIEWS_CREATE, gameId, data),
+  updateReview: (gameId, reviewId, data) => ipcRenderer.invoke(IPC_CHANNELS.REVIEWS_UPDATE, gameId, reviewId, data),
+  deleteReview: (gameId, reviewId) => ipcRenderer.invoke(IPC_CHANNELS.REVIEWS_DELETE, gameId, reviewId),
+
+  // Social
+  getFriends: () => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_GET_FRIENDS),
+  sendFriendRequest: (username) => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_SEND_REQUEST, username),
+  acceptFriendRequest: (friendshipId) => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_ACCEPT_REQUEST, friendshipId),
+  removeFriend: (friendshipId) => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_REMOVE_FRIEND, friendshipId),
+  blockUser: (friendshipId) => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_BLOCK_USER, friendshipId),
+  getFriendRequests: () => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_GET_REQUESTS),
+  updateUserStatus: (status, gameId) => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_UPDATE_STATUS, status, gameId),
+  searchUsers: (query) => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_SEARCH_USERS, query),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

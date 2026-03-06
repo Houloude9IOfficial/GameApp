@@ -22,7 +22,7 @@ export function registerGamesHandlers(ipcMain: IpcMain, serverClient: ServerClie
       return await serverClient.getGame(id);
     } catch (err: any) {
       log.error(`Failed to fetch game ${id}:`, err.message);
-      throw new Error(`Failed to fetch game details: ${err.message}`);
+      throw new Error('Failed to fetch game details.');
     }
   });
 
