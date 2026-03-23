@@ -2,14 +2,17 @@ name: Build GameApp installer
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - "v*"
+  release:
+    types: [created]
   workflow_dispatch:
 
 jobs:
   build:
+    runs-on: windows-latest
     env:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
-    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -23,14 +26,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Optional: pre-build (your script also builds, but this keeps logs clearer)
       - name: Build app (main + preload + renderer)
         run: npm run build
 
-      - name: Build installer
+      - name: Build installer (GameLauncher_Setup.exe)
         run: npm run build:installer
 
-      - name: Upload installer artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: GameApp-installer
-          path: release/**
+          name: GameApp-release
+          path: |
+            release/**
