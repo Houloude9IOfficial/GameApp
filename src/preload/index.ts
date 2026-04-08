@@ -152,6 +152,14 @@ const electronAPI: ElectronAPI = {
   getFriendRequests: () => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_GET_REQUESTS),
   updateUserStatus: (status, gameId) => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_UPDATE_STATUS, status, gameId),
   searchUsers: (query) => ipcRenderer.invoke(IPC_CHANNELS.SOCIAL_SEARCH_USERS, query),
+
+  // Gamepad
+  getConnectedGamepads: () => ipcRenderer.invoke(IPC_CHANNELS.GAMEPAD_GET_CONNECTED),
+  onGamepadStatusChanged: (callback) => {
+    const handler = (_e: any, data: any) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.GAMEPAD_STATUS_CHANGED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.GAMEPAD_STATUS_CHANGED, handler);
+  },
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

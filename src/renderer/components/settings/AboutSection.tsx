@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, Github, ExternalLink, Shield, Download, RefreshCw, CheckCircle } from 'lucide-react';
+import { Heart, Github, ExternalLink, Shield, Download, RefreshCw, CheckCircle, Coffee } from 'lucide-react';
 import logoImg from '../../assets/logo-rounded.png';
 import { UpdateInfo, UpdateProgress } from '../../../shared/types';
 import { formatBytes, formatSpeed } from '../../utils/formatters';
@@ -73,7 +73,7 @@ export function AboutSection() {
         </p>
       </div>
 
-      {/* Update Section */}
+      {/* Update Section
       <div className="bg-card border border-card-border rounded-xl p-5">
         <h3 className="font-semibold text-text-primary mb-3">Updates</h3>
 
@@ -124,7 +124,7 @@ export function AboutSection() {
           <RefreshCw size={14} className={checking ? 'animate-spin' : ''} />
           {checking ? 'Checking...' : 'Check for Updates'}
         </button>
-      </div>
+      </div> */}
 
       {/* Tech Stack */}
       <div className="bg-card border border-card-border rounded-xl p-5">
@@ -154,6 +154,7 @@ export function AboutSection() {
           <LinkButton href="https://github.com/Houloude9IOfficial/GameApp" icon={<Github size={16} />} label="Source Code" description="View on GitHub" />
           {/* <LinkButton href="https://github.com/Houloude9IOfficial/GameApp" icon={<Shield size={16} />} label="Licenses" description="Open source licenses" /> */}
           <LinkButton href="https://github.com/Houloude9IOfficial/GameServer" icon={<ExternalLink size={16} />} label="Documentation" description="Setup and usage guide" />
+          <LinkButton href="https://buymeacoffee.com/houloude" icon={<Coffee size={16} />} label="Buy Me a Coffee" description="Support the project" />
         </div>
       </div>
 

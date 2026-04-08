@@ -390,6 +390,18 @@ export interface ServerNotification {
   dismissed: boolean;
 }
 
+// ── Gamepad / Controllers ──
+
+export interface GamepadInfo {
+  index: number;
+  id: string;
+  name: string;
+  connected: boolean;
+  battery: number; // 0-100, -1 if not available
+  signalStrength: number; // 0-100, -1 if not available
+  lastUpdated: number; // timestamp
+}
+
 // ── IPC Channels ──
 
 export const IPC_CHANNELS = {
@@ -506,6 +518,10 @@ export const IPC_CHANNELS = {
   SOCIAL_GET_REQUESTS: 'social:getRequests',
   SOCIAL_UPDATE_STATUS: 'social:updateStatus',
   SOCIAL_SEARCH_USERS: 'social:searchUsers',
+
+  // Gamepad
+  GAMEPAD_GET_CONNECTED: 'gamepad:getConnected',
+  GAMEPAD_STATUS_CHANGED: 'gamepad:statusChanged',
 } as const;
 
 // ── Electron API exposed to renderer ──
@@ -618,6 +634,10 @@ export interface ElectronAPI {
   getReviews: (gameId: string, opts?: { sort?: string; page?: number; limit?: number }) => Promise<{ reviews: Review[]; total: number }>;
   getReviewSummary: (gameId: string) => Promise<ReviewSummary>;
   createReview: (gameId: string, data: { rating: number; title?: string; body?: string }) => Promise<Review>;
+
+  // Gamepad
+  getConnectedGamepads: () => Promise<GamepadInfo[]>;
+  onGamepadStatusChanged: (callback: (gamepads: GamepadInfo[]) => void) => () => void;
   updateReview: (gameId: string, reviewId: string, data: { rating?: number; title?: string; body?: string }) => Promise<Review>;
   deleteReview: (gameId: string, reviewId: string) => Promise<void>;
 

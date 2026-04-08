@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Gamepad2, Camera, Newspaper,
   Store, Globe, Bookmark, Download,
   ChevronLeft, ChevronRight, Settings,
   HardDrive, Users, Activity,
-} from 'lucide-react';
-import { useDownloadStore } from '../../stores/useDownloadStore';
-import { formatBytes } from '../../utils/formatters';
-import { useSettingsStore } from '../../stores/useSettingsStore';
+} from "lucide-react";
+import { useDownloadStore } from "../../stores/useDownloadStore";
+import { formatBytes } from "../../utils/formatters";
+import { useSettingsStore } from "../../stores/useSettingsStore";
+import { ControllerStatus } from "../common/ControllerStatus";
 
 interface NavItem {
   id: string;
@@ -35,20 +36,20 @@ export function Sidebar() {
 
   const navItems: NavItem[] = [
     // Store
-    { id: 'store', label: 'Market', icon: <Store size={20} />, path: '/store', section: 'STORE' },
+    { id: "store", label: "Market", icon: <Store size={20} />, path: "/store", section: "STORE" },
     // Library
-    { id: 'library', label: 'My Games', icon: <Gamepad2 size={20} />, path: '/', section: 'LIBRARY' },
+    { id: "library", label: "My Games", icon: <Gamepad2 size={20} />, path: "/", section: "LIBRARY" },
     // Downloads
-    { id: 'downloads', label: 'Downloads', icon: <Download size={20} />, path: '/downloads', badge: activeCount > 0 ? activeCount : undefined },
+    { id: "downloads", label: "Downloads", icon: <Download size={20} />, path: "/downloads", badge: activeCount > 0 ? activeCount : undefined },
     // Social
-    { id: 'friends', label: 'Friends', icon: <Users size={20} />, path: '/friends', section: 'SOCIAL' },
-    { id: 'activity', label: 'Activity', icon: <Activity size={20} />, path: '/activity' },
+    { id: "friends", label: "Friends", icon: <Users size={20} />, path: "/friends", section: "SOCIAL" },
+    { id: "activity", label: "Activity", icon: <Activity size={20} />, path: "/activity" },
     // Settings
-    { id: 'settings', label: 'Settings', icon: <Settings size={20} />, path: '/settings' },
+    { id: "settings", label: "Settings", icon: <Settings size={20} />, path: "/settings" },
   ];
 
   const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
+    if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
@@ -59,7 +60,7 @@ export function Sidebar() {
   return (
     <div
       className="flex flex-col bg-sidebar border-r border-card-border transition-all duration-300 shrink-0"
-      style={{ width: collapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)' }}
+      style={{ width: collapsed ? "var(--sidebar-width-collapsed)" : "var(--sidebar-width)" }}
     >
       {/* Nav Items */}
       <nav className="flex-1 py-2 overflow-y-auto overflow-x-hidden">
@@ -82,10 +83,10 @@ export function Sidebar() {
               onClick={() => navigate(item.path)}
               className={`
                 w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all duration-150
-                ${collapsed ? 'justify-center px-0' : ''}
+                ${collapsed ? "justify-center px-0" : ""}
                 ${isActive(item.path)
-                  ? 'bg-sidebar-active text-accent border-l-2 border-accent'
-                  : 'text-sidebar-text hover:bg-sidebar-hover hover:text-text-primary border-l-2 border-transparent'
+                  ? "bg-sidebar-active text-accent border-l-2 border-accent"
+                  : "text-sidebar-text hover:bg-sidebar-hover hover:text-text-primary border-l-2 border-transparent"
                 }
               `}
               title={collapsed ? item.label : undefined}
@@ -106,8 +107,11 @@ export function Sidebar() {
         ))}
       </nav>
 
+      {/* Controllers Section */}
+      <ControllerStatus collapsed={collapsed} />
+
       {/* Storage Indicator */}
-      <div className={`p-3 border-t border-card-border ${collapsed ? 'px-2' : ''}`}>
+      <div className={`p-3 border-t border-card-border ${collapsed ? "px-2" : ""}`}>
         {!collapsed && diskSpace.total > 0 && (
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5 text-text-muted">
@@ -117,7 +121,7 @@ export function Sidebar() {
             <div className="w-full h-1.5 bg-surface-active rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  usedPercent > 90 ? 'bg-danger' : usedPercent > 70 ? 'bg-warning' : 'bg-accent'
+                  usedPercent > 90 ? "bg-danger" : usedPercent > 70 ? "bg-warning" : "bg-accent"
                 }`}
                 style={{ width: `${usedPercent}%` }}
               />

@@ -16,6 +16,7 @@ import { registerUpdaterHandlers } from './ipc/updater';
 import { registerNotificationHandlers } from './ipc/notifications';
 import { registerReviewHandlers } from './ipc/reviews';
 import { registerSocialHandlers } from './ipc/social';
+import { registerGamepadHandlers } from './ipc/gamepad';
 import { ServerClient } from './services/ServerClient';
 import { DownloadManager } from './services/DownloadManager';
 import { GameLauncher } from './services/GameLauncher';
@@ -241,6 +242,7 @@ function registerAllHandlers(): void {
   registerNotificationHandlers(ipcMain, serverClient);
   registerReviewHandlers(ipcMain, serverClient);
   registerSocialHandlers(ipcMain, serverClient);
+  registerGamepadHandlers(ipcMain);
 }
 
 // ── Register gameapp:// protocol ──

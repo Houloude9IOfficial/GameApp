@@ -14,11 +14,21 @@ import { FriendsPage } from './pages/FriendsPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { InstallModal } from './components/common/InstallModal';
 import { GamepadHandler } from './components/common/GamepadHandler';
+import { useGamepadPolling } from './hooks/useGamepadPolling';
 import { useThemeStore } from './stores/useThemeStore';
 import { useSettingsStore } from './stores/useSettingsStore';
 import { useDownloadStore } from './stores/useDownloadStore';
 import { useAuthStore } from './stores/useAuthStore';
 import { useOwnershipStore } from './stores/useOwnershipStore';
+
+/**
+ * GamepadStatusManager - Initialize gamepad polling on app startup
+ * This component ensures gamepad detection runs even before controllers connect
+ */
+function GamepadStatusManager() {
+  useGamepadPolling();
+  return null;
+}
 
 function StartPageRedirect() {
   const navigate = useNavigate();
@@ -111,6 +121,7 @@ export function App() {
   return (
     <HashRouter>
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-primary">
+        <GamepadStatusManager />
         <TitleBar />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
