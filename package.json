@@ -68,7 +68,7 @@
         "portable"
       ],
       "artifactName": "GameLauncher_Setup.${ext}",
-      "icon": "src/renderer/assets/favicon.ico"
+      "icon": "src/renderer/assets/faviclogo_256.ico"
     },
     "nsis": {
       "oneClick": false,
