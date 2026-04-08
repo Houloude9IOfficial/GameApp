@@ -10,6 +10,9 @@ export default defineConfig({
     outDir: '../../dist/renderer',
     emptyOutDir: true,
     sourcemap: true,
+    rollupOptions: {
+      external: ['velora-node-sdk'],
+    },
   },
   resolve: {
     alias: {

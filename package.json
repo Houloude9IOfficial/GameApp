@@ -1,6 +1,6 @@
 {
   "name": "game-launcher",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "All-in-one game store and launcher. Download, manage, and play games from your GameServer",
   "main": "dist/main/main/index.js",
   "author": "Houloude9IOfficial",
@@ -33,6 +33,8 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^6.23.0",
     "remark-gfm": "^4.0.1",
+    "velora-node-sdk": "1.0.0",
+    "ws": "^8.20.0",
     "zustand": "^4.5.0"
   },
   "devDependencies": {

@@ -9,7 +9,7 @@ import {
 import { useDownloadStore } from "../../stores/useDownloadStore";
 import { formatBytes } from "../../utils/formatters";
 import { useSettingsStore } from "../../stores/useSettingsStore";
-import { ControllerStatus } from "../common/ControllerStatus";
+import { MusicPlayer } from "../common/MusicPlayer";
 
 interface NavItem {
   id: string;
@@ -107,8 +107,8 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Controllers Section */}
-      <ControllerStatus collapsed={collapsed} />
+      {/* Music Player Section */}
+      <MusicPlayer collapsed={collapsed} />
 
       {/* Storage Indicator */}
       <div className={`p-3 border-t border-card-border ${collapsed ? "px-2" : ""}`}>

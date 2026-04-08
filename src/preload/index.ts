@@ -96,6 +96,7 @@ const electronAPI: ElectronAPI = {
   getServerInfo: () => ipcRenderer.invoke(IPC_CHANNELS.SERVER_INFO),
   testServerConnection: (url) => ipcRenderer.invoke(IPC_CHANNELS.SERVER_TEST, url),
   scanForServers: (ports) => ipcRenderer.invoke(IPC_CHANNELS.SERVER_SCAN_LAN, ports),
+  versionCheck: () => ipcRenderer.invoke(IPC_CHANNELS.SERVER_VERSION_CHECK),
 
   // App
   minimize: () => ipcRenderer.invoke(IPC_CHANNELS.APP_MINIMIZE),
@@ -159,6 +160,46 @@ const electronAPI: ElectronAPI = {
     const handler = (_e: any, data: any) => callback(data);
     ipcRenderer.on(IPC_CHANNELS.GAMEPAD_STATUS_CHANGED, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.GAMEPAD_STATUS_CHANGED, handler);
+  },
+
+  // Velora
+  velora: {
+    register: (appConfig) => ipcRenderer.invoke(IPC_CHANNELS.VELORA_REGISTER, appConfig),
+    pollStatus: (requestId) => ipcRenderer.invoke(IPC_CHANNELS.VELORA_POLL_STATUS, requestId),
+    saveToken: (token, permissions) => ipcRenderer.invoke(IPC_CHANNELS.VELORA_SAVE_TOKEN, token, permissions),
+    clearToken: () => ipcRenderer.invoke(IPC_CHANNELS.VELORA_CLEAR_TOKEN),
+    connectWebSocket: () => ipcRenderer.invoke('velora:connectWebSocket'),
+    disconnectWebSocket: () => ipcRenderer.invoke('velora:disconnectWebSocket'),
+    play: (trackId) => ipcRenderer.invoke('velora:play', trackId),
+    pause: () => ipcRenderer.invoke('velora:pause'),
+    toggle: () => ipcRenderer.invoke('velora:toggle'),
+    next: () => ipcRenderer.invoke('velora:next'),
+    seek: (position) => ipcRenderer.invoke('velora:seek', position),
+    onWSConnected: (callback) => {
+      const handler = () => callback();
+      ipcRenderer.on('velora:ws-connected', handler);
+      return () => ipcRenderer.removeListener('velora:ws-connected', handler);
+    },
+    onWSDisconnected: (callback) => {
+      const handler = () => callback();
+      ipcRenderer.on('velora:ws-disconnected', handler);
+      return () => ipcRenderer.removeListener('velora:ws-disconnected', handler);
+    },
+    onWSError: (callback) => {
+      const handler = (_e: any, data: any) => callback(data);
+      ipcRenderer.on('velora:ws-error', handler);
+      return () => ipcRenderer.removeListener('velora:ws-error', handler);
+    },
+    onTrackChanged: (callback) => {
+      const handler = (_e: any, data: any) => callback(data);
+      ipcRenderer.on('velora:track-changed', handler);
+      return () => ipcRenderer.removeListener('velora:track-changed', handler);
+    },
+    onPlaybackStateChanged: (callback) => {
+      const handler = (_e: any, data: any) => callback(data);
+      ipcRenderer.on('velora:playback-state-changed', handler);
+      return () => ipcRenderer.removeListener('velora:playback-state-changed', handler);
+    },
   },
 };
 

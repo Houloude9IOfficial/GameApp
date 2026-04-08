@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Wifi, WifiOff, Download, ArrowUpCircle } from 'lucide-react';
+import { Wifi, WifiOff, Download, ArrowUpCircle, AlertCircle } from 'lucide-react';
 import { useDownloadStore } from '../../stores/useDownloadStore';
+import { useVersionStore } from '../../stores/useVersionStore';
 import { formatSpeed } from '../../utils/formatters';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,6 +13,10 @@ export function StatusBar() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const activeCount = useDownloadStore(s => s.getActiveCount());
   const totalSpeed = useDownloadStore(s => s.getTotalSpeed());
+  const { isCompatible, compatibilityMessage } = useVersionStore(s => ({
+    isCompatible: s.isCompatible,
+    compatibilityMessage: s.compatibilityMessage,
+  }));
 
   useEffect(() => {
     const cleanup = window.electronAPI.onUpdateAvailable(() => {
@@ -73,8 +78,14 @@ export function StatusBar() {
         )}
       </div>
 
-      {/* Right: Download Status + Update Indicator */}
+      {/* Right: Download Status + Update Indicator + Version Warning */}
       <div className="flex items-center gap-3">
+        {isCompatible === false && compatibilityMessage && (
+          <div className="flex items-center gap-1.5 text-danger" title={compatibilityMessage}>
+            <AlertCircle size={11} />
+            <span>{compatibilityMessage}</span>
+          </div>
+        )}
         {updateAvailable && (
           <div className="flex items-center gap-1.5 text-accent cursor-pointer hover:underline" onClick={() => {
             // Navigate to settings About tab

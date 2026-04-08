@@ -1,23 +1,34 @@
-import React, { useState } from 'react';
-import { Palette, Download, Wifi, Settings as SettingsIcon, Info, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Palette, Download, Wifi, Settings as SettingsIcon, Info, Lock, Puzzle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { AppearanceSettings } from '../components/settings/AppearanceSettings';
 import { DownloadSettings } from '../components/settings/DownloadSettings';
 import { ConnectionSettings } from '../components/settings/ConnectionSettings';
 import { GeneralSettings } from '../components/settings/GeneralSettings';
 import { AboutSection } from '../components/settings/AboutSection';
+import { IntegrationsSettings } from '../components/settings/IntegrationsSettings';
 
 const TABS = [
   { id: 'appearance', label: 'Appearance', icon: <Palette size={16} /> },
   { id: 'downloads', label: 'Downloads', icon: <Download size={16} /> },
   { id: 'connection', label: 'Connection', icon: <Wifi size={16} /> },
   { id: 'general', label: 'General', icon: <SettingsIcon size={16} /> },
+  { id: 'integrations', label: 'Integrations', icon: <Puzzle size={16} /> },
   { id: 'about', label: 'About', icon: <Info size={16} /> },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<TabId>('appearance');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as TabId | null;
+  const [activeTab, setActiveTab] = useState<TabId>(tabParam || 'appearance');
+
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   return (
     <div className="flex h-full">
@@ -51,6 +62,7 @@ export function SettingsPage() {
           {activeTab === 'downloads' && <DownloadSettings />}
           {activeTab === 'connection' && <ConnectionSettings />}
           {activeTab === 'general' && <GeneralSettings />}
+          {activeTab === 'integrations' && <IntegrationsSettings />}
           {activeTab === 'about' && <AboutSection />}
         </div>
       </div>

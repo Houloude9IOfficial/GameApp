@@ -228,6 +228,11 @@ export interface AppSettings {
   startMinimized: boolean;
   startPage: 'store' | 'library';
   language: string;
+
+  // Integrations
+  veloraToken?: string;
+  veloraPermissions?: ('read' | 'write')[];
+  veloraRequestId?: string;
 }
 
 export interface LockedSettings {
@@ -476,6 +481,7 @@ export const IPC_CHANNELS = {
   SERVER_INFO: 'server:info',
   SERVER_TEST: 'server:test',
   SERVER_SCAN_LAN: 'server:scanLAN',
+  SERVER_VERSION_CHECK: 'server:versionCheck',
 
   // App
   APP_MINIMIZE: 'app:minimize',
@@ -522,6 +528,12 @@ export const IPC_CHANNELS = {
   // Gamepad
   GAMEPAD_GET_CONNECTED: 'gamepad:getConnected',
   GAMEPAD_STATUS_CHANGED: 'gamepad:statusChanged',
+
+  // Velora
+  VELORA_REGISTER: 'velora:register',
+  VELORA_POLL_STATUS: 'velora:pollStatus',
+  VELORA_SAVE_TOKEN: 'velora:saveToken',
+  VELORA_CLEAR_TOKEN: 'velora:clearToken',
 } as const;
 
 // ── Electron API exposed to renderer ──
@@ -602,6 +614,7 @@ export interface ElectronAPI {
   getServerInfo: () => Promise<ServerInfo>;
   testServerConnection: (url: string) => Promise<{ success: boolean; error?: string }>;
   scanForServers: (ports?: number[]) => Promise<DiscoveredServer[]>;
+  versionCheck: () => Promise<{ isCompatible: boolean; appVersion: string; serverVersion: string; message: string | null }>;
 
   // App
   minimize: () => void;
@@ -640,6 +653,26 @@ export interface ElectronAPI {
   onGamepadStatusChanged: (callback: (gamepads: GamepadInfo[]) => void) => () => void;
   updateReview: (gameId: string, reviewId: string, data: { rating?: number; title?: string; body?: string }) => Promise<Review>;
   deleteReview: (gameId: string, reviewId: string) => Promise<void>;
+
+  // Velora
+  velora: {
+    register: (appConfig: { app: { name: string; description?: string; developer?: string; website?: string; icon?: string }; permissions?: ('read' | 'write')[] }) => Promise<{ request_id: string; status: string }>;
+    pollStatus: (requestId: string) => Promise<{ request_id: string; status: 'pending' | 'approved' | 'denied'; access_token?: string; token_type?: string; permissions?: ('read' | 'write')[]; error?: string }>;
+    saveToken: (token: string, permissions: ('read' | 'write')[]) => Promise<void>;
+    clearToken: () => Promise<void>;
+    connectWebSocket: () => Promise<void>;
+    disconnectWebSocket: () => Promise<void>;
+    play: (trackId?: string) => Promise<void>;
+    pause: () => Promise<void>;
+    toggle: () => Promise<void>;
+    next: () => Promise<void>;
+    seek: (position: number) => Promise<void>;
+    onWSConnected: (callback: () => void) => () => void;
+    onWSDisconnected: (callback: () => void) => () => void;
+    onWSError: (callback: (data: { error: string }) => void) => () => void;
+    onTrackChanged: (callback: (track: any) => void) => () => void;
+    onPlaybackStateChanged: (callback: (state: any) => void) => () => void;
+  };
 
   // Social
   getFriends: () => Promise<Friend[]>;

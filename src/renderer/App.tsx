@@ -20,6 +20,8 @@ import { useSettingsStore } from './stores/useSettingsStore';
 import { useDownloadStore } from './stores/useDownloadStore';
 import { useAuthStore } from './stores/useAuthStore';
 import { useOwnershipStore } from './stores/useOwnershipStore';
+import { useVersionStore } from './stores/useVersionStore';
+import { useVeloraStore } from './stores/useVeloraStore';
 
 /**
  * GamepadStatusManager - Initialize gamepad polling on app startup
@@ -76,18 +78,75 @@ function DeeplinkHandler() {
 
 export function App() {
   const { applyTheme, loadThemes } = useThemeStore();
-  const { loadSettings } = useSettingsStore();
+  const { loadSettings, settings } = useSettingsStore();
   const { initDownloadListeners } = useDownloadStore();
   const { isAuthenticated, checkStatus } = useAuthStore();
   const { fetchOwned } = useOwnershipStore();
+  const { checkVersionCompatibility } = useVersionStore();
+  const { initialize: initializeVelora, connectWebSocket: veloraConnect } = useVeloraStore();
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     loadSettings();
     loadThemes().then(() => applyTheme());
     checkStatus().finally(() => setAuthChecked(true));
+    checkVersionCompatibility(); // Check version compatibility on app startup
     const cleanup = initDownloadListeners();
     return cleanup;
+  }, []);
+
+  // Initialize Velora with stored token if available
+  useEffect(() => {
+    if (settings?.veloraToken && settings.veloraPermissions) {
+      initializeVelora(settings.veloraToken, settings.veloraPermissions);
+      // Auto-connect WebSocket on app start
+      veloraConnect().catch(err => {
+        console.warn('Failed to auto-connect Velora WebSocket:', err);
+      });
+    }
+  }, [settings?.veloraToken, settings?.veloraPermissions, initializeVelora, veloraConnect]);
+
+  // Set up Velora IPC listeners
+  useEffect(() => {
+    const { setWSConnected, setError, updateTrack, updatePlaybackState } = useVeloraStore.getState();
+
+    const unlisteners: Array<() => void> = [];
+
+    // Listen for WebSocket connected
+    const unlistenWsConnected = window.electronAPI.velora.onWSConnected?.(() => {
+      setWSConnected(true);
+      setError(null);
+    });
+    if (unlistenWsConnected) unlisteners.push(unlistenWsConnected);
+
+    // Listen for WebSocket disconnected
+    const unlistenWsDisconnected = window.electronAPI.velora.onWSDisconnected?.(() => {
+      setWSConnected(false);
+    });
+    if (unlistenWsDisconnected) unlisteners.push(unlistenWsDisconnected);
+
+    // Listen for WebSocket errors
+    const unlistenWsError = window.electronAPI.velora.onWSError?.(({ error }: { error: string }) => {
+      setWSConnected(false);
+      setError('Connection error: ' + error);
+    });
+    if (unlistenWsError) unlisteners.push(unlistenWsError);
+
+    // Listen for track changes
+    const unlistenTrackChanged = window.electronAPI.velora.onTrackChanged?.((track: any) => {
+      updateTrack(track);
+    });
+    if (unlistenTrackChanged) unlisteners.push(unlistenTrackChanged);
+
+    // Listen for playback state changes
+    const unlistenPlaybackChanged = window.electronAPI.velora.onPlaybackStateChanged?.((state: any) => {
+      updatePlaybackState(state);
+    });
+    if (unlistenPlaybackChanged) unlisteners.push(unlistenPlaybackChanged);
+
+    return () => {
+      unlisteners.forEach(unlisten => unlisten?.());
+    };
   }, []);
 
   // Fetch ownership when authenticated
