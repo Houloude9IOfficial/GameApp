@@ -19,7 +19,9 @@ Built with [Electron](https://www.electronjs.org/) 30, [React](https://react.dev
 - **Game Reviews & Ratings** — Submit, edit, and delete reviews with 1–5 star ratings, rating distribution chart, review summaries
 - **Notifications** — Real-time notification dropdown with unread badge, mark read/dismiss, auto-refresh polling
 - **Self-Hosted Auto-Updater** — Background update checking with dynamic feed URL derived from server settings, manual download & install flow
-- **Gamepad / Controller Navigation** — Full spatial navigation via D-pad/analog stick, A (confirm), B (back), LB/RB (page switch), right stick scroll
+- **Gamepad / Controller Detection & UI** — End-to-end gamepad detection with ControllerStatus widget in Sidebar, RAF-based polling, real-time connection state, per-gamepad info (up to 4 controllers with battery/signal mock stats)
+- **Velora Music Integration** — Connect to Velora music service for in-app playback control, track metadata, album art, play/pause/next controls; extensible framework for future integrations (Spotify, Apple Music, etc.)
+- **Version Compatibility Checking** — Automatic app ↔ server version validation with semantic versioning, compatibility matrix, and user-friendly messaging
 - **Deep Links & Desktop Shortcuts** — `gameapp://launch/<gameId>` protocol handler; create Windows desktop shortcuts that launch games through the app
 - **Verify & Repair** — Verify game file integrity against server hashes, auto-repair corrupted or missing files
 - **Theming** — 3 built-in themes (Dark, Light, Midnight), full CSS-variable color system, import/export custom themes as JSON
@@ -104,19 +106,23 @@ GameApp/
 │   │   │   ├── discovery.ts    # LAN server scanning
 │   │   │   ├── downloads.ts    # Download queue management
 │   │   │   ├── filesystem.ts   # File system, disk space, desktop shortcuts
+│   │   │   ├── gamepad.ts      # Gamepad connection state management
 │   │   │   ├── games.ts        # Game catalog & install management
 │   │   │   ├── launch.ts       # Game launching & play time tracking
 │   │   │   ├── notifications.ts # Notification fetch, read, dismiss
 │   │   │   ├── reviews.ts      # Game reviews CRUD
 │   │   │   ├── settings.ts     # Settings, themes, server connection
 │   │   │   ├── social.ts       # Friends, requests, status, search
-│   │   │   └── updater.ts      # Auto-updater check, download, install
+│   │   │   ├── updater.ts      # Auto-updater check, download, install
+│   │   │   ├── velora.ts       # Velora music integration (register, poll, token, query, playback)
+│   │   │   └── version.ts      # Version compatibility checking
 │   │   ├── services/
 │   │   │   ├── ServerClient.ts # HTTP client for GameServer API
 │   │   │   ├── DownloadManager.ts # Queue-based concurrent downloader with throttling
 │   │   │   └── GameLauncher.ts # Game process spawner & session tracker
 │   │   └── utils/
-│   │       └── elevate.ts      # UAC elevation helper (Windows)
+│   │       ├── elevate.ts      # UAC elevation helper (Windows)
+│   │       └── versionCompatibility.ts # Version parsing, comparison, and matrix lookup
 │   ├── preload/
 │   │   └── index.ts            # Context bridge (~50 API methods)
 │   └── renderer/
@@ -125,14 +131,16 @@ GameApp/
 │       ├── index.html          # HTML shell
 │       ├── assets/
 │       │   ├── favicon.ico     # App icon (installer)
-│       │   └── site.webmanifest
+│       │   ├── site.webmanifest
+│       │   └── integrations/
+│       │       └── velora_rounded.png # Velora service icon
 │       ├── pages/
 │       │   ├── ActivityPage.tsx    # Activity feed (recently played, install history)
 │       │   ├── LibraryPage.tsx     # User's game library (grid/list, filters, sort)
 │       │   ├── StorePage.tsx       # Browse server catalog (hero carousel, featured)
 │       │   ├── DownloadsPage.tsx   # Download queue management
 │       │   ├── FriendsPage.tsx     # Friends list, requests, search & add users
-│       │   ├── SettingsPage.tsx    # Tabbed settings UI (5 tabs)
+│       │   ├── SettingsPage.tsx    # Tabbed settings UI (6 tabs: Appearance, Downloads, Connection, General, Integrations, About)
 │       │   ├── GameDetailPage.tsx  # Game detail view wrapper
 │       │   ├── CollectionsPage.tsx # Custom game collections
 │       │   └── LoginPage.tsx       # Authentication page
@@ -141,15 +149,18 @@ GameApp/
 │       │   │   ├── Badge.tsx
 │       │   │   ├── BandwidthGraph.tsx    # Real-time download speed canvas graph
 │       │   │   ├── Button.tsx           # Variants: primary, secondary, ghost, danger, accent
+│       │   │   ├── ControllerStatus.tsx # Gamepad status widget for Sidebar
 │       │   │   ├── GamepadHandler.tsx    # Gamepad/controller spatial navigation
 │       │   │   ├── InstallModal.tsx      # Pre-download dialog with storage info
 │       │   │   ├── Modal.tsx            # Generic modal with AnimatePresence
+│       │   │   ├── MusicPlayer.tsx      # Generic music player (multi-service)
 │       │   │   ├── NotificationDropdown.tsx # Bell icon dropdown with unread badge
 │       │   │   ├── PlatformIcon.tsx     # SVG icons for game platforms
 │       │   │   ├── ProgressBar.tsx
 │       │   │   ├── ScreenshotLightbox.tsx # Full-screen gallery with keyboard/swipe nav
 │       │   │   ├── StarRating.tsx        # Reusable star rating (display & interactive)
 │       │   │   ├── Tooltip.tsx
+│       │   │   ├── VeloraPlayer.tsx     # Velora-specific music player
 │       │   │   └── YouTubePlayer.tsx    # Trailer thumbnail → opens in browser
 │       │   ├── games/
 │       │   │   ├── GameCard.tsx          # Animated card with glow, progress overlay
@@ -170,18 +181,24 @@ GameApp/
 │       │       ├── AppearanceSettings.tsx # Theme picker + custom color editor
 │       │       ├── ConnectionSettings.tsx # Server URL, LAN discovery, auth status
 │       │       ├── DownloadSettings.tsx   # Install dir, bandwidth, concurrency
-│       │       └── GeneralSettings.tsx    # Launch on startup, minimize to tray, start page
+│       │       ├── GeneralSettings.tsx    # Launch on startup, minimize to tray, start page
+│       │       ├── IntegrationsSettings.tsx # External service integrations
+│       │       └── integrations/
+│       │           └── VeloraIntegrationCard.tsx # Velora setup UI (register, poll, test, clear)
 │       ├── stores/
-│       │   ├── useAuthStore.ts      # Authentication state & actions
-│       │   ├── useDownloadStore.ts  # Download queue & progress tracking
-│       │   ├── useGamepadStore.ts   # Gamepad connected/enabled state
-│       │   ├── useGamesStore.ts     # All games, installed list, filtering, sorting
-│       │   ├── useInstallModal.ts   # Install modal state
+│       │   ├── useAuthStore.ts         # Authentication state & actions
+│       │   ├── useDownloadStore.ts    # Download queue & progress tracking
+│       │   ├── useGamepadStore.ts     # Gamepad detection & per-controller info (up to 4)
+│       │   ├── useGamesStore.ts       # All games, installed list, filtering, sorting
+│       │   ├── useInstallModal.ts     # Install modal state
+│       │   ├── useMusicIntegrationsStore.ts # Multi-service music integration status
 │       │   ├── useNotificationStore.ts # Notification fetch, read, dismiss, unread count
-│       │   ├── useOwnershipStore.ts # Owned games (library)
-│       │   ├── useSettingsStore.ts  # App settings persistence
-│       │   ├── useSocialStore.ts    # Friends list, requests, status, search
-│       │   └── useThemeStore.ts     # Theme management (built-in + custom)
+│       │   ├── useOwnershipStore.ts   # Owned games (library)
+│       │   ├── useSettingsStore.ts    # App settings persistence
+│       │   ├── useSocialStore.ts      # Friends list, requests, status, search
+│       │   ├── useThemeStore.ts       # Theme management (built-in + custom)
+│       │   ├── useVeloraStore.ts      # Velora connection, token, playback state
+│       │   └── useVersionStore.ts     # App ↔ server version compatibility state
 │       ├── styles/
 │       │   └── globals.css          # CSS variables, custom scrollbars, animations
 │       └── utils/
@@ -194,15 +211,16 @@ GameApp/
 
 ## Settings
 
-The Settings page has five tabs:
+The Settings page has six tabs:
 
 | Tab | Options |
-|-----|---------|
+|-----|----------|
 | **Appearance** | Theme selection (Dark / Light / Midnight), custom color editor (12 color fields), import/export themes as JSON |
 | **Downloads** | Install directory, max concurrent downloads (1–5), bandwidth limit presets (Unlimited / 1–100 MB/s), auto-update toggle |
 | **Connection** | Server URL (with LAN discovery scanner), authentication status (login/logout/delete account) |
 | **General** | Launch on startup, minimize to tray, start minimized, start page (Store / Library), reset to defaults |
-| **About** | App version, tech stack, GitHub links |
+| **Integrations** | Configure external services (Velora music player registration & connection) |
+| **About** | App version, tech stack, GitHub links, Buy Me a Coffee support link |
 
 ---
 
