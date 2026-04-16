@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import log from 'electron-log';
@@ -187,5 +187,46 @@ export class GameLauncher {
     for (const [gameId] of this.running) {
       this.stop(gameId);
     }
+  }
+
+  /**
+   * Kill all running games forcefully (SIGKILL) and clear the running map.
+   * Called when the launcher is shutting down to ensure complete cleanup.
+   */
+  killAllGames(): void {
+    for (const [gameId, game] of this.running) {
+      try {
+        // On Windows, use taskkill to kill process tree (includes child processes)
+        if (process.platform === 'win32') {
+          try {
+            execSync(`taskkill /PID ${game.pid} /T /F`, { stdio: 'ignore' });
+            log.info(`Force killed game ${gameId} (PID: ${game.pid}) on Windows`);
+          } catch (err: any) {
+            log.warn(`taskkill failed for ${gameId} (PID: ${game.pid}):`, err.message);
+            // Fallback to process.kill
+            try {
+              game.process.kill('SIGKILL');
+            } catch {}
+          }
+        } else {
+          // On macOS/Linux, try SIGTERM then SIGKILL
+          try {
+            game.process.kill('SIGTERM');
+            log.info(`Killed game ${gameId} (PID: ${game.pid})`);
+          } catch (err: any) {
+            // If normal kill fails, try force kill
+            try {
+              process.kill(game.pid, 'SIGKILL');
+              log.info(`Force killed game ${gameId} (PID: ${game.pid})`);
+            } catch (innerErr: any) {
+              log.warn(`Failed to kill game ${gameId} (PID: ${game.pid}):`, innerErr.message);
+            }
+          }
+        }
+      } catch (err: any) {
+        log.error(`Error killing game ${gameId}:`, err.message);
+      }
+    }
+    this.running.clear();
   }
 }

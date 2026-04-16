@@ -19,6 +19,7 @@ const COMPATIBILITY_MATRIX: Record<string, { min: string; max: string }> = {
   '1.0.0': { min: '1.0.0', max: '3.0.0' },
   '2.0.0': { min: '1.0.0', max: '3.0.0' },
   '3.0.0': { min: '1.0.0', max: '3.0.0' },
+  '3.0.1': { min: '1.0.0', max: '3.0.0' },
 };
 
 /**

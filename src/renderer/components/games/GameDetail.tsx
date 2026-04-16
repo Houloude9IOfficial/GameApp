@@ -12,6 +12,7 @@ import { useGamesStore } from '../../stores/useGamesStore';
 import { useDownloadStore } from '../../stores/useDownloadStore';
 import { useInstallModal } from '../../stores/useInstallModal';
 import { useOwnershipStore } from '../../stores/useOwnershipStore';
+import { useGameStatus } from '../../hooks/useGameStatus';
 import { ScreenshotLightbox } from '../common/ScreenshotLightbox';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -40,7 +41,8 @@ export function GameDetail({ game }: GameDetailProps) {
   const installStatus = useGamesStore(s => s.getInstallStatus(game.id));
   const installedGame = useGamesStore(s => s.getInstalledGame(game.id));
   const playStats = useGamesStore(s => s.playStats[game.id]);
-  const [isRunning, setIsRunning] = useState(false);
+  const gameStatus = useGameStatus(game.id);
+  const isRunning = gameStatus.running;
   const owned = useOwnershipStore(s => s.ownsGame(game.id));
   const addGameToLibrary = useOwnershipStore(s => s.addGame);
 
@@ -129,7 +131,7 @@ export function GameDetail({ game }: GameDetailProps) {
       return formatGameState(game.gameState!);
     }
     if (!owned) return 'Add to account';
-    if (isRunning) return 'Stop';
+    if (isRunning) return 'Running...';
     if (isDownloading) return 'Downloading...';
     if (updateAvailable) return 'Update';
     if (installStatus === 'installed') return 'Play';
@@ -142,7 +144,7 @@ export function GameDetail({ game }: GameDetailProps) {
       return <Ban size={16} />;
     }
     if (!owned) return <PackagePlus size={16} />;
-    if (isRunning) return <Square size={16} fill="currentColor" />;
+    if (isRunning) return <Play size={16} fill="currentColor" />;
     if (isDownloading) return <Download size={16} />;
     if (updateAvailable) return <RefreshCw size={16} />;
     if (installStatus === 'installed') return <Play size={16} fill="currentColor" />;
@@ -160,7 +162,7 @@ export function GameDetail({ game }: GameDetailProps) {
     const scrollY = el.scrollTop;
     const fadeEnd = 280; // fully faded at this scroll position
     const opacity = Math.max(0, 1 - scrollY / fadeEnd);
-    const translateY = scrollY * 0.4; // parallax
+    const translateY = Math.min(scrollY * 0.2, 100); // reduced parallax for smoothness, capped
     setBannerOpacity(opacity);
     setBannerTranslateY(translateY);
   }, []);
@@ -173,7 +175,7 @@ export function GameDetail({ game }: GameDetailProps) {
           className="absolute inset-0 transition-none"
           style={{
             opacity: bannerOpacity,
-            transform: `translateY(${bannerTranslateY}px)`,
+            transform: `translate3d(0, ${bannerTranslateY}px, 0)`,
             willChange: 'opacity, transform',
           }}
         >
@@ -181,7 +183,14 @@ export function GameDetail({ game }: GameDetailProps) {
             src={bannerUrl}
             alt={game.name}
             className="w-full h-full object-cover"
-            onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_BANNER; }}
+            onError={(e) => {
+              const imgElement = e.target as HTMLImageElement;
+              console.warn(
+                `[ImageLoadError] Failed to load banner for game: ${game.name} (${game.id})`,
+                { bannerUrl, timestamp: new Date().toISOString() }
+              );
+              imgElement.src = DEFAULT_BANNER;
+            }}
             draggable={false}
           />
         </div>
@@ -266,16 +275,19 @@ export function GameDetail({ game }: GameDetailProps) {
               )}
               <button
                 onClick={handlePrimaryAction}
-                disabled={!available || (isDownloading && currentDownload?.status === 'downloading')}
-                className={`flex items-center gap-2 px-8 py-3 rounded-xl text-base font-semibold transition-all shadow-lg ${
+                disabled={!available || isRunning || (isDownloading && currentDownload?.status === 'downloading')}
+                className={`flex items-center ${isRunning ? 'gap-1 px-4 py-2' : 'gap-2 px-8 py-3'} rounded-xl text-base font-semibold transition-all shadow-lg ${
                   !available
                     ? 'text-white/70 bg-white/10 cursor-not-allowed backdrop-blur-sm border border-white/10'
+                    : isRunning
+                    ? 'bg-white/10 text-white/70 cursor-default opacity-70 hover:opacity-80'
                     : 'text-primary hover:opacity-90 hover:scale-100 disabled:opacity-50'
                 }`}
-                style={available ? { backgroundColor: accentColor } : undefined}
+                style={available && !isRunning ? { backgroundColor: accentColor } : undefined}
+                title={isRunning ? 'Game is currently running' : ''}
               >
                 {primaryButtonIcon()}
-                {primaryButtonLabel()}
+                <span>{primaryButtonLabel()}</span>
               </button>
             </div>
           </div>
@@ -324,10 +336,10 @@ export function GameDetail({ game }: GameDetailProps) {
       {/* Tabs */}
       <div className="px-8 bg-surface border-b border-card-border">
         <div className="flex gap-1">
-          {(['overview', 'files', 'settings'] as const).map(tab => (
+          {(['overview', 'files', ...(installStatus === 'installed' ? ['settings'] : [])] as const).map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => setActiveTab(tab as typeof activeTab)}
               className={`px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
                 activeTab === tab
                   ? 'border-accent text-accent'

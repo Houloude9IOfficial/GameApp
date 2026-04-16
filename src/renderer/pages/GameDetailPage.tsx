@@ -9,10 +9,16 @@ export function GameDetailPage() {
   const navigate = useNavigate();
   const games = useGamesStore(s => s.games);
   const fetchGames = useGamesStore(s => s.fetchGames);
+  const fetchPlayStats = useGamesStore(s => s.fetchPlayStats);
 
   useEffect(() => {
-    if (games.length === 0) fetchGames();
-  }, []);
+    // Refetch game details AND play stats whenever the page is visited or id changes
+    // This ensures game sessions and stats are always up-to-date
+    if (id) {
+      fetchGames();
+      fetchPlayStats(id);
+    }
+  }, [id, fetchGames, fetchPlayStats]);
 
   const game = games.find(g => g.id === id);
 

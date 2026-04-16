@@ -7,6 +7,7 @@ import { useGamesStore } from '../../stores/useGamesStore';
 import { useDownloadStore } from '../../stores/useDownloadStore';
 import { useInstallModal } from '../../stores/useInstallModal';
 import { useOwnershipStore } from '../../stores/useOwnershipStore';
+import { useGameStatus } from '../../hooks/useGameStatus';
 import { formatBytes, formatPlayTime, isGameAvailable, getCountdown, formatCountdown, formatGameState } from '../../utils/formatters';
 import { DEFAULT_BANNER } from '../../utils/constants';
 import { Badge } from '../common/Badge';
@@ -29,9 +30,11 @@ export function GameCard({ game, size = 3 }: GameCardProps) {
   const downloadQueue = useDownloadStore(s => s.queue);
   const owned = useOwnershipStore(s => s.ownsGame(game.id));
   const addGameToLibrary = useOwnershipStore(s => s.addGame);
+  const gameStatus = useGameStatus(game.id);
 
   const isDownloading = downloadQueue.some(t => t.gameId === game.id && (t.status === 'downloading' || t.status === 'queued'));
   const downloadProgress = downloadQueue.find(t => t.gameId === game.id && t.status === 'downloading');
+  const isRunning = gameStatus.running;
 
   const available = isGameAvailable(game.gameState);
   const [countdown, setCountdown] = useState(getCountdown(game.releaseDate));
@@ -125,7 +128,21 @@ export function GameCard({ game, size = 3 }: GameCardProps) {
             alt={game.name}
             className={`w-full h-full object-cover transition-transform duration-500 ${hovered ? 'scale-100' : 'scale-100'} ${imageLoaded ? '' : 'opacity-0'}`}
             onLoad={() => setImageLoaded(true)}
-            onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_BANNER; setImageLoaded(true); }}
+            onError={(e) => {
+              const imgElement = e.target as HTMLImageElement;
+              const failedUrl = imgElement.src;
+              console.warn(
+                `[ImageLoadError] Failed to load image for game: ${game.name} (${game.id})`,
+                {
+                  failedUrl,
+                  bannerUrl,
+                  capsuleUrl,
+                  timestamp: new Date().toISOString(),
+                }
+              );
+              imgElement.src = DEFAULT_BANNER;
+              setImageLoaded(true);
+            }}
             draggable={false}
           />
 
@@ -187,13 +204,21 @@ export function GameCard({ game, size = 3 }: GameCardProps) {
           {available && (
             <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${hovered ? 'opacity-100' : 'opacity-0'}`}>
               <div className="flex items-center gap-2">
-                {/* Play/Install Button */}
+                {/* Play/Install Button or Running State */}
                 <button
                   onClick={handlePlay}
-                  className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-100"
-                  style={{ backgroundColor: accentColor }}
+                  disabled={isRunning}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 ${
+                    isRunning
+                      ? 'bg-white/10 cursor-default opacity-60'
+                      : 'hover:scale-100'
+                  }`}
+                  style={!isRunning ? { backgroundColor: accentColor } : undefined}
+                  title={isRunning ? 'Game is currently running' : ''}
                 >
-                  {!owned ? (
+                  {isRunning ? (
+                    <Play size={22} className="text-white opacity-50" fill="currentColor" />
+                  ) : !owned ? (
                     <PackagePlus size={20} className="text-primary" />
                   ) : installStatus === 'installed' ? (
                     <Play size={22} className="text-primary ml-0.5" fill="currentColor" />
@@ -230,9 +255,15 @@ export function GameCard({ game, size = 3 }: GameCardProps) {
           )}
           {available && installStatus === 'installed' && (
             <div className="absolute top-2 left-2">
-              <Badge variant="success" size="sm">
-                <CheckCircle size={10} className="mr-0.5" /> Installed
-              </Badge>
+              {isRunning ? (
+                <Badge variant="accent" size="sm">
+                  <Play size={10} className="mr-0.5" fill="currentColor" /> Running
+                </Badge>
+              ) : (
+                <Badge variant="success" size="sm">
+                  <CheckCircle size={10} className="mr-0.5" /> Installed
+                </Badge>
+              )}
             </div>
           )}
 

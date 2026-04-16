@@ -96,7 +96,29 @@ function loadDefaults(): void {
 
 // ── App identity (prevents Windows from inheriting .url shortcut icon) ──
 // Use icon from resources/ (outside Vite's pipeline, no filename hashing)
-const APP_ICON_PATH = path.join(__dirname, '..', '..', '..', 'resources', 'icon.png');
+// Try multiple paths: packaged app first, then dev mode
+function getAppIconPath(): string {
+  const possiblePaths = [
+    // Packaged app (electron-builder includes resources in app.asar)
+    path.join(process.resourcesPath, 'resources', 'icon.png'),
+    // Dev mode: dist/main/main/index.js -> ../../../resources/icon.png
+    path.join(__dirname, '..', '..', '..', 'resources', 'icon.png'),
+    // Alternative dev mode structure
+    path.join(process.cwd(), 'resources', 'icon.png'),
+  ];
+  
+  for (const iconPath of possiblePaths) {
+    if (fs.existsSync(iconPath)) {
+      log.info(`Using app icon from: ${iconPath}`);
+      return iconPath;
+    }
+  }
+  
+  log.warn('App icon not found in any expected location:', possiblePaths);
+  return possiblePaths[0]; // Return first path even if not exists (empty tray fallback)
+}
+
+const APP_ICON_PATH = getAppIconPath();
 app.setAppUserModelId('com.gamelauncher.app');
 
 // ── Services ──
@@ -342,9 +364,18 @@ if (!gotTheLock) {
 }
 
 app.on('before-quit', () => {
+  // Kill all running games
+  gameLauncher?.killAllGames();
+  // Stop all active downloads
+  downloadManager?.stopAll();
   // Save download queue state
   downloadManager?.saveState();
-  // Record play sessions for any still-running games without killing them
+  // Record any remaining play sessions
   gameLauncher?.recordAllSessions();
   tray?.destroy();
+  
+  // Force app exit after cleanup (ensure no orphaned processes)
+  setTimeout(() => {
+    process.exit(0);
+  }, 100);
 });

@@ -16,6 +16,7 @@ function HeroCarousel({ games }: { games: Game[] }) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const featured = games;
+  const SHOW_LOGO = true; // Set to false to show game name instead of logo in hero carousel
 
   const goTo = useCallback((index: number) => {
     if (isTransitioning) return;
@@ -72,10 +73,10 @@ function HeroCarousel({ games }: { games: Game[] }) {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col justify-end h-full p-8">
-        {game.brandingUrls?.logo ? (
+        {game.brandingUrls?.logo && SHOW_LOGO ? (
           <img src={game.brandingUrls.logo} alt={game.name} className="h-16 w-auto object-contain mb-3 drop-shadow-lg" style={{ maxWidth: '280px' }} />
         ) : (
-          <h2 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">{game.name}</h2>
+          <h2 className="text-4xl font-bold mb-2 drop-shadow-lg" style={{ maxWidth: '280px', color: `#${game.branding?.primaryColor}` }}>{game.name}</h2>
         )}
 
         {game.developer && (

@@ -1,6 +1,6 @@
 {
   "name": "game-launcher",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "All-in-one game store and launcher. Download, manage, and play games from your GameServer",
   "main": "dist/main/main/index.js",
   "author": "Houloude9IOfficial",
@@ -61,6 +61,7 @@
     },
     "files": [
       "dist/**/*",
+      "resources/**/*",
       "defaults.json"
     ],
     "win": {

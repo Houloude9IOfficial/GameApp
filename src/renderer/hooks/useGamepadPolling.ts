@@ -93,7 +93,7 @@ export function useGamepadPolling(): void {
     window.addEventListener("gamepaddisconnected", handleGamepadDisconnected);
 
     // Start continuous polling via RAF
-    console.log("[Gamepad] Starting continuous polling...");
+    // console.log("[Gamepad] Starting continuous polling...");
     rafId = requestAnimationFrame(pollGamepads);
 
     // Cleanup function
